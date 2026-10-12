@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+// logout API route handler
+
 export async function POST() {
   try {
     const cookieStore = await cookies();
