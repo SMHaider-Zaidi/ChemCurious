@@ -6,6 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Navigation } from "@/components/navigation";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  buildReactionEquation,
+  formatChemicalFormula,
+  formatSpeciesLabel,
+} from "@/lib/chemical-formula";
+import {
   FlaskConical,
   RotateCcw,
   Play,
@@ -14,6 +26,7 @@ import {
   Info,
   Search,
   X,
+  Maximize2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -52,7 +65,17 @@ const isOrganicReaction = (r: ReactionRecord): boolean => {
   });
 };
 
-function MoleculeViewer({ data, name }: { data: MoleculeData | null; name: string }) {
+function MoleculeViewer({
+  data,
+  name,
+  autoRotate = true,
+  minHeightClass = "min-h-[200px]",
+}: {
+  data: MoleculeData | null;
+  name: string;
+  autoRotate?: boolean;
+  minHeightClass?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
@@ -142,24 +165,29 @@ function MoleculeViewer({ data, name }: { data: MoleculeData | null; name: strin
     viewer.zoomTo();
     viewer.render();
 
-    let animationFrameId: number;
-    const animate = () => {
-      viewer.rotate(0.5, "y");
-      viewer.render();
+    let animationFrameId: number | undefined;
+    if (autoRotate) {
+      const animate = () => {
+        viewer.rotate(0.5, "y");
+        viewer.render();
+        animationFrameId = requestAnimationFrame(animate);
+      };
       animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animationFrameId = requestAnimationFrame(animate);
+    }
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId !== undefined) {
+        cancelAnimationFrame(animationFrameId);
+      }
       containerRef.current?.replaceChildren();
     };
-  }, [data, isScriptLoaded]);
+  }, [autoRotate, data, isScriptLoaded]);
 
   if (!data?.atoms?.length) {
     return (
-      <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/25 p-4 text-center text-muted-foreground">
+      <div
+        className={`flex h-full ${minHeightClass} flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/25 p-4 text-center text-muted-foreground`}
+      >
         <FlaskConical className="mb-2 h-7 w-7 animate-pulse text-muted-foreground/60" />
         <span className="text-xs font-medium">No 3D model available for {name}</span>
       </div>
@@ -167,7 +195,9 @@ function MoleculeViewer({ data, name }: { data: MoleculeData | null; name: strin
   }
 
   return (
-    <div className="relative h-full min-h-[200px] w-full overflow-hidden rounded-lg border border-border/70 bg-transparent shadow-sm">
+    <div
+      className={`relative h-full ${minHeightClass} w-full overflow-hidden rounded-lg border border-border/70 bg-transparent shadow-sm`}
+    >
       {!isScriptLoaded && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
           <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
@@ -186,6 +216,7 @@ export default function ReactionSimulatorPage() {
   const [activeTab, setActiveTab] = useState<"organic" | "inorganic">("organic");
   const [isReacting, setIsReacting] = useState(false);
   const [hasReacted, setHasReacted] = useState(false);
+  const [expandedMolecule, setExpandedMolecule] = useState<ReactionEntry | null>(null);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -295,6 +326,38 @@ export default function ReactionSimulatorPage() {
 
   const stageMolecules = hasReacted ? selectedReaction?.products : selectedReaction?.reactants;
 
+  const reactionEquation = selectedReaction ? buildReactionEquation(selectedReaction) : "";
+  const sidebarEquation = (reaction: ReactionRecord) =>
+    /(?:->|→|=)/.test(reaction.name)
+      ? reaction.name
+      : buildReactionEquation(reaction);
+
+  const renderMoleculeCard = (entry: ReactionEntry, index: number, accent?: "primary" | "emerald") => (
+    <button
+      type="button"
+      key={`${entry.molecule}-${index}`}
+      onClick={() => setExpandedMolecule(entry)}
+      className="group flex min-w-[200px] max-w-[260px] flex-1 cursor-pointer flex-col items-center gap-2 rounded-xl border bg-muted/10 p-3 text-left shadow-xs transition-all hover:border-primary/50 hover:bg-muted/25 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <div className="relative h-[200px] w-full">
+        <MoleculeViewer data={entry.data || null} name={entry.molecule} />
+        <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-background/80 p-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+          <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+        </span>
+      </div>
+      <div
+        className={`text-center text-sm font-bold ${
+          accent === "emerald" ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"
+        }`}
+      >
+        {formatSpeciesLabel(entry.coefficient, entry.molecule, entry.data?.formula)}
+      </div>
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+        Click to expand 3D view
+      </span>
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -385,7 +448,9 @@ export default function ReactionSimulatorPage() {
                           : "border-border bg-background text-foreground hover:bg-muted/50"
                       }`}
                     >
-                      <div className="truncate font-medium leading-snug">{reaction.name}</div>
+                      <div className="truncate font-medium leading-snug">
+                        {formatChemicalFormula(sidebarEquation(reaction))}
+                      </div>
                       {reaction.category && (
                         <div
                           className={`mt-1 text-[11px] ${
@@ -422,6 +487,15 @@ export default function ReactionSimulatorPage() {
                 </Card>
 
                 <Card className="flex min-h-[500px] flex-col justify-between border p-6 shadow-sm">
+                  <div className="mb-4 border-b pb-4 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Balanced equation
+                    </p>
+                    <p className="mt-2 font-serif text-xl font-bold leading-relaxed text-foreground sm:text-2xl">
+                      {formatChemicalFormula(reactionEquation)}
+                    </p>
+                  </div>
+
                   {isReacting ? (
                     <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
                       <div className="relative flex items-center justify-center">
@@ -444,27 +518,9 @@ export default function ReactionSimulatorPage() {
                       </div>
 
                       <div className="flex flex-wrap items-center justify-center gap-6 py-4">
-                        {selectedReaction.reactants.map((reactant, index) => (
-                          <div
-                            key={`${reactant.molecule}-${index}`}
-                            className="flex flex-1 min-w-[200px] max-w-[260px] flex-col items-center gap-2 rounded-xl border bg-muted/10 p-3 shadow-xs"
-                          >
-                            <div className="h-[200px] w-full">
-                              <MoleculeViewer
-                                data={reactant.data || null}
-                                name={reactant.molecule}
-                              />
-                            </div>
-                            <div className="text-center text-sm font-bold">
-                              {reactant.coefficient > 1 && (
-                                <span className="mr-1 text-base text-primary">
-                                  {reactant.coefficient}x
-                                </span>
-                              )}
-                              {reactant.molecule}
-                            </div>
-                          </div>
-                        ))}
+                        {selectedReaction.reactants.map((reactant, index) =>
+                          renderMoleculeCard(reactant, index, "primary")
+                        )}
                       </div>
 
                       <div className="flex justify-center border-t pt-6">
@@ -485,27 +541,9 @@ export default function ReactionSimulatorPage() {
                       </div>
 
                       <div className="flex flex-wrap items-center justify-center gap-6 py-4">
-                        {stageMolecules?.map((molecule, index) => (
-                          <div
-                            key={`${molecule.molecule}-${index}`}
-                            className="flex flex-1 min-w-[200px] max-w-[260px] flex-col items-center gap-2 rounded-xl border bg-muted/10 p-3 shadow-xs"
-                          >
-                            <div className="h-[200px] w-full">
-                              <MoleculeViewer
-                                data={molecule.data || null}
-                                name={molecule.molecule}
-                              />
-                            </div>
-                            <div className="text-center text-sm font-bold">
-                              {molecule.coefficient > 1 && (
-                                <span className="mr-1 text-base text-emerald-600">
-                                  {molecule.coefficient}x
-                                </span>
-                              )}
-                              {molecule.molecule}
-                            </div>
-                          </div>
-                        ))}
+                        {stageMolecules?.map((molecule, index) =>
+                          renderMoleculeCard(molecule, index, "emerald")
+                        )}
                       </div>
 
                       <div className="flex justify-center gap-4 border-t pt-6">
@@ -544,6 +582,45 @@ export default function ReactionSimulatorPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={expandedMolecule !== null} onOpenChange={(open) => !open && setExpandedMolecule(null)}>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl" showCloseButton>
+          {expandedMolecule && (
+            <>
+              <DialogHeader className="space-y-1 border-b px-6 py-4 text-left">
+                <DialogTitle className="font-serif text-xl capitalize">
+                  {expandedMolecule.molecule}
+                </DialogTitle>
+                <DialogDescription className="space-y-1">
+                  <span className="block">
+                    Formula:{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatSpeciesLabel(
+                        expandedMolecule.coefficient,
+                        expandedMolecule.molecule,
+                        expandedMolecule.data?.formula
+                      )}
+                    </span>
+                  </span>
+                  <span className="block">
+                    Coefficient:{" "}
+                    <span className="font-semibold text-foreground">{expandedMolecule.coefficient}</span>
+                  </span>
+                  <span className="block text-xs">Drag to rotate · scroll to zoom</span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="h-[min(55vh,420px)] w-full bg-muted/20 p-4">
+                <MoleculeViewer
+                  data={expandedMolecule.data || null}
+                  name={expandedMolecule.molecule}
+                  autoRotate={false}
+                  minHeightClass="min-h-[320px]"
+                />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
