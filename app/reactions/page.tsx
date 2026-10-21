@@ -326,11 +326,12 @@ export default function ReactionSimulatorPage() {
 
   const stageMolecules = hasReacted ? selectedReaction?.products : selectedReaction?.reactants;
 
-  const reactionEquation = selectedReaction ? buildReactionEquation(selectedReaction) : "";
   const sidebarEquation = (reaction: ReactionRecord) =>
     /(?:->|→|=)/.test(reaction.name)
       ? reaction.name
       : buildReactionEquation(reaction);
+
+  const overviewEquation = selectedReaction ? sidebarEquation(selectedReaction) : "";
 
   const renderMoleculeCard = (entry: ReactionEntry, index: number, accent?: "primary" | "emerald") => (
     <button
@@ -473,29 +474,22 @@ export default function ReactionSimulatorPage() {
             {selectedReaction ? (
               <>
                 <Card className="border p-6 shadow-sm">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-4">
-                    <h2 className="font-serif text-2xl font-bold text-foreground">
-                      {selectedReaction.name}
-                    </h2>
+                  <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
+                    <p className="min-w-0 flex-1 font-serif text-xl font-bold leading-relaxed text-foreground sm:text-2xl">
+                      {formatChemicalFormula(overviewEquation)}
+                    </p>
                     {selectedReaction.category && (
-                      <Badge variant="secondary" className="px-3 py-1 capitalize">
+                      <Badge variant="secondary" className="shrink-0 px-3 py-1 capitalize">
                         {selectedReaction.category}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{selectedReaction.description}</p>
+                  {selectedReaction.description && (
+                    <p className="text-sm text-muted-foreground">{selectedReaction.description}</p>
+                  )}
                 </Card>
 
                 <Card className="flex min-h-[500px] flex-col justify-between border p-6 shadow-sm">
-                  <div className="mb-4 border-b pb-4 text-center">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Balanced equation
-                    </p>
-                    <p className="mt-2 font-serif text-xl font-bold leading-relaxed text-foreground sm:text-2xl">
-                      {formatChemicalFormula(reactionEquation)}
-                    </p>
-                  </div>
-
                   {isReacting ? (
                     <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
                       <div className="relative flex items-center justify-center">
