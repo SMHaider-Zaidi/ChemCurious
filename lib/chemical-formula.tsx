@@ -1,4 +1,5 @@
 import React from "react";
+import { cleanReactionEquation } from "@/lib/reaction-equation";
 
 function formatMolecularFormula(
   formula: string,
@@ -8,8 +9,16 @@ function formatMolecularFormula(
   const regex = /([A-Z][a-z]?)(\d*)/g;
   let match: RegExpExecArray | null;
   let index = 0;
+  let lastIndex = 0;
 
   while ((match = regex.exec(formula)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(
+        <React.Fragment key={`${keyPrefix}-txt-${index}`}>
+          {formula.slice(lastIndex, match.index)}
+        </React.Fragment>
+      );
+    }
     nodes.push(
       <React.Fragment key={`${keyPrefix}-el-${index}`}>{match[1]}</React.Fragment>
     );
@@ -18,7 +27,14 @@ function formatMolecularFormula(
         <sub key={`${keyPrefix}-sub-${index}`}>{match[2]}</sub>
       );
     }
+    lastIndex = regex.lastIndex;
     index += 1;
+  }
+
+  if (lastIndex < formula.length) {
+    nodes.push(
+      <React.Fragment key={`${keyPrefix}-tail`}>{formula.slice(lastIndex)}</React.Fragment>
+    );
   }
 
   if (nodes.length === 0) {
@@ -69,11 +85,11 @@ function formatSide(side: string, sideKey: string): React.ReactNode[] {
  * Formats a chemical equation or molecular formula with HTML subscripts for
  * stoichiometric numbers inside formulas. Leading coefficients stay normal size.
  */
-export function formatChemicalFormula(formula: string): React.ReactNode {
-  const trimmed = formula.trim();
+export function formatChemicalFormula(formula: string, conditions?: string | null): React.ReactNode {
+  const trimmed = cleanReactionEquation(formula, conditions).trim();
   if (!trimmed) return null;
 
-  const arrowMatch = trimmed.match(/^(.*?)(\s*(?:->|→|<->|=)\s*)(.*)$/);
+  const arrowMatch = trimmed.match(/^(.*)(\s*(?:->|→|<->|=)\s*)(.*)$/);
   if (!arrowMatch) {
     return <>{formatTerm(trimmed, "single")}</>;
   }
