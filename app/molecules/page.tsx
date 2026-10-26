@@ -13,24 +13,19 @@ export default function MoleculesPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <Atom className="h-6 w-6 text-primary animate-spin-slow" />
+                <Atom className="h-6 w-6 text-primary" />
               </div>
               <h1 className="font-serif text-3xl font-bold text-foreground tracking-tight">
                 Explore Molecules in 3D
               </h1>
             </div>
             <p className="max-w-3xl text-sm sm:text-base text-muted-foreground">
-              Interact directly with spatial molecular structures powered live by NCBI PubChem. Search any
+              Interact directly with spatial molecular structures. Search any
               chemical name or formula, rotate conformers, inspect atomic bonds, and analyze 3D geometry.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="px-3 py-1 text-xs font-medium gap-1.5 border-primary/30">
-              <Sparkles className="h-3 w-3 text-primary" />
-              PubChem PUG REST 3D Engine
-            </Badge>
-          </div>
+          
         </div>
 
         <MolecularViewer />

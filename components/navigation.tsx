@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -13,7 +14,7 @@ const NAV_LINKS = [
   { href: "/periodic-table", label: "Periodic Table", aliases: ["/periodic"] },
   { href: "/reactions", label: "Reactions" },
   { href: "/quizzes", label: "Quizzes" },
-  { href: "/dashboard", label: "Dashboard", requiresAuth: true },
+  { href: "/dashboard", label: "Dashboard" },
 ] as const;
 
 export function Navigation() {
@@ -36,26 +37,30 @@ export function Navigation() {
     <nav className="border-b bg-white shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="text-xl font-bold text-primary">
-              Chemistry Playground
-            </Link>
-            <div className="hidden space-x-6 md:flex">
-              {NAV_LINKS.filter((item) => !("requiresAuth" in item && item.requiresAuth) || user).map(
-                (item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={linkClass(
-                      item.href,
-                      "aliases" in item ? item.aliases : []
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                )
-              )}
-            </div>
+          <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+            <Image
+              src="ChemCurious_logo_HD.png"
+              alt="ChemCurious"
+              width={140}
+              height={38}
+              priority
+              className="h-10 w-auto object-contain"
+            />
+          </Link>
+
+          <div className="hidden flex-1 items-center justify-center gap-6 md:flex">
+            {NAV_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={linkClass(
+                  item.href,
+                  "aliases" in item ? item.aliases : []
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
 
           <div className="flex items-center space-x-4">

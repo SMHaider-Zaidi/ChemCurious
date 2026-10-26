@@ -26,13 +26,22 @@ export interface MoleculeAttributes {
   formula: string;
   category: string;
   description?: string | null;
+  cid?: number | null;
+  iupacName?: string | null;
+  molecularWeight?: string | null;
+  sdf?: string | null;
+  recordType?: string | null;
   atoms: object;
   bonds: object;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface MoleculeCreationAttributes extends Optional<MoleculeAttributes, "id" | "category" | "description"> {}
+interface MoleculeCreationAttributes
+  extends Optional<
+    MoleculeAttributes,
+    "id" | "category" | "description" | "cid" | "iupacName" | "molecularWeight" | "sdf" | "recordType"
+  > {}
 
 export class Molecule extends Model<MoleculeAttributes, MoleculeCreationAttributes> implements MoleculeAttributes {
   declare public id: number;
@@ -40,6 +49,11 @@ export class Molecule extends Model<MoleculeAttributes, MoleculeCreationAttribut
   declare public formula: string;
   declare public category: string;
   declare public description: string | null;
+  declare public cid: number | null;
+  declare public iupacName: string | null;
+  declare public molecularWeight: string | null;
+  declare public sdf: string | null;
+  declare public recordType: string | null;
   declare public atoms: object;
   declare public bonds: object;
   declare public readonly createdAt: Date;
@@ -60,7 +74,7 @@ if (!sequelize.models.Molecule) {
         unique: "idx_unique_molecule",
       },
       formula: {
-        type: DataTypes.STRING(50),
+        type: DataTypes.STRING(100),
         allowNull: false,
       },
       category: {
@@ -71,6 +85,29 @@ if (!sequelize.models.Molecule) {
       description: {
         type: DataTypes.TEXT,
         allowNull: true,
+      },
+      cid: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      iupacName: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: "iupac_name",
+      },
+      molecularWeight: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        field: "molecular_weight",
+      },
+      sdf: {
+        type: DataTypes.TEXT("long"),
+        allowNull: true,
+      },
+      recordType: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        field: "record_type",
       },
       atoms: {
         type: DataTypes.JSON,

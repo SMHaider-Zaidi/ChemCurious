@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || "chemistry-playground-fallback-secret-2026-very-secure-key";
+const JWT_SECRET = process.env.JWT_SECRET || "chemcurious-fallback-secret-2026-very-secure-key";
 
 /**
  * Hashes a plain-text password using Node.js pbkdf2.

@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧪 Chemistry Playground
+# 🧪 ChemCurious
 
 **A High-Performance Interactive 3D Molecular Renderer, Chemical Reaction Engine & Educational Platform**
 
@@ -10,7 +10,7 @@
 
 ## 📖 Overview
 
-**Chemistry Playground** is an advanced interactive platform engineered for real-time spatial chemistry visualization, chemical reaction modeling, and elemental breakdown. Designed to bridge the gap between static chemical formulas and dynamic physical structures, the system translates spatial atomic coordinates, bond geometries, and reaction pathways into high-fidelity, interactive 3D models.
+**ChemCurious** is an advanced interactive platform engineered for real-time spatial chemistry visualization, chemical reaction modeling, and elemental breakdown. Designed to bridge the gap between static chemical formulas and dynamic physical structures, the system translates spatial atomic coordinates, bond geometries, and reaction pathways into high-fidelity, interactive 3D models.
 
 ---
 
@@ -44,7 +44,7 @@
 ---
 
 ## 🔮 Future Implementations & Roadmap
-We are actively expanding Chemistry Playground into a full-scale interactive learning and management platform. Current and upcoming developments include:
+We are actively expanding ChemCurious into a full-scale interactive learning and management platform. Current and upcoming developments include:
 
 * 🔐 User & Educator Portal (In Active Development)
 

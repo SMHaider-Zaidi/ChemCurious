@@ -25,7 +25,7 @@ export default function AboutPage() {
         {/* Header Badge */}
         <div className="text-center mb-8">
           <Badge variant="outline" className="px-4 py-1 mb-3 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 font-medium">
-            Exclusively Built for Our Center&apos;s Students
+            Dedicated in Loving Memory • Open Interactive Learning Platform
           </Badge>
           <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground tracking-tight">
             Dedicated in Loving Memory
@@ -61,9 +61,9 @@ export default function AboutPage() {
             <div className="w-16 h-1 bg-emerald-500/40 rounded-full my-2" />
 
             <p className="text-muted-foreground leading-relaxed text-sm md:text-base max-w-2xl">
-              This interactive chemistry playground was crafted as a dedicated tribute to 
+              ChemCurious was crafted as a dedicated tribute to 
               <strong className="text-foreground"> Sir Fayyaz</strong>, who devoted years of his life 
-              to nurturing generations of chemistry students at our center as well as serving as an esteemed lecturer at Aga Khan Higher Secondary School.
+              to nurturing generations of chemistry students with academic distinction as well as serving as an esteemed lecturer at Aga Khan Higher Secondary School.
             </p>
 
             <p className="text-muted-foreground leading-relaxed text-sm md:text-base max-w-2xl">
@@ -84,9 +84,9 @@ export default function AboutPage() {
 
           <Card className="p-5 border text-center flex flex-col items-center space-y-2">
             <Award className="h-6 w-6 text-primary" />
-            <h3 className="font-bold text-sm text-foreground">Our Coaching Center</h3>
+            <h3 className="font-bold text-sm text-foreground">Lifelong Mentorship</h3>
             <p className="text-xs text-muted-foreground">
-              A guiding pillar who spent years mentoring students toward university success.
+              A guiding pillar who spent decades mentoring students toward university success and scientific discovery.
             </p>
           </Card>
 
@@ -94,19 +94,19 @@ export default function AboutPage() {
             <BookOpen className="h-6 w-6 text-primary" />
             <h3 className="font-bold text-sm text-foreground">Interactive Learning</h3>
             <p className="text-xs text-muted-foreground">
-              Carrying forward his mission to make chemistry intuitive and visual.
+              Carrying forward his mission to make chemistry intuitive, visual, and accessible.
             </p>
           </Card>
         </div>
 
-        {/* Note to Students */}
+        {/* Note to Students & Learners */}
         <div className="mt-8 rounded-xl border border-border/80 bg-card p-6 shadow-xs text-center">
           <div className="flex justify-center items-center gap-2 font-bold text-foreground text-base mb-1">
             <Users className="h-4 w-4 text-emerald-600" />
-            <span>Built Exclusively for You</span>
+            <span>Empowering Chemistry Learners Everywhere</span>
           </div>
           <p className="text-xs text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            This tool is designed specifically for students enrolled in our center. Use this 3D simulator to study molecular geometry, practice and carry forward Sir Fayyaz’s passion for learning.
+            This platform is open and accessible to students, educators, and chemistry enthusiasts worldwide. Use these 3D tools to explore molecular geometry, balance reactions, and carry forward Sir Fayyaz’s passion for visual learning.
           </p>
         </div>
       </main>

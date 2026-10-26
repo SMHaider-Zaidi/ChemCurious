@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Montserrat, Open_Sans } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
+import { PwaRegister } from "@/components/pwa-register"
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -19,10 +20,19 @@ const openSans = Open_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Chemistry Playground - Interactive Learning Platform",
+  title: "ChemCurious — Interactive 3D Chemistry Platform",
   description:
-    "Explore chemistry through 3D molecular visualization, interactive periodic table, and engaging educational content",
-  generator: "v0.app",
+    "ChemCurious — Interactive 3D Chemistry Platform & Simulation Engine. Explore chemistry through 3D molecular visualization, interactive periodic table, and chemical reaction modeling.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ChemCurious",
+  },
+  icons: {
+    icon: "/ChemCurious_logo.svg",
+    apple: "/ChemCurious_logo.svg",
+  },
 }
 
 export default function RootLayout({
@@ -33,7 +43,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${montserrat.variable} ${openSans.variable} antialiased`}>
       <body className="font-sans">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <PwaRegister />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

@@ -280,7 +280,7 @@ export async function fetchMoleculeData(searchQuery: string): Promise<MoleculeDa
     if (apiErr.message && apiErr.message.includes("Molecule not found")) {
       throw apiErr;
     }
-    console.warn("Internal API route encountered an issue, falling back to direct PubChem PUG REST...", apiErr.message);
+    console.warn("Internal API route encountered an issue, falling back to direct molecular database query...", apiErr.message);
   }
 
   // Client-side fallback to PubChem

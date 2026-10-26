@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -87,7 +88,7 @@ export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
 
       const data = await response.json()
       if (data.error === "EMAIL_ALREADY_EXISTS") {
-        setError("This email is already registered for our coaching center")
+        setError("This email is already registered. Please sign in instead.")
       } else {
         setError(data.error || "Registration failed")
       }
@@ -105,7 +106,10 @@ export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">Chemistry Playground</CardTitle>
+          <div className="flex justify-center mb-2">
+            <Image src="/ChemCurious_logo.svg" alt="ChemCurious Logo" width={44} height={44} />
+          </div>
+          <CardTitle className="text-2xl font-bold text-primary">ChemCurious</CardTitle>
           <CardDescription>Sign in to track your progress and save your work</CardDescription>
         </CardHeader>
         <CardContent>
