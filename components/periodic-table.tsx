@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { AtomicViewer } from "@/components/atomic-viewer"
 import { Search, Filter } from "lucide-react"
 
 interface Element {
@@ -2416,9 +2418,13 @@ function ElementCell({ element, isSelected, onClick }: ElementCellProps) {
     <button
       onClick={onClick}
       className={`
-        relative w-10 h-10 sm:w-12 sm:h-12 border rounded cursor-pointer
+        w-10 h-10 sm:w-12 sm:h-12 border rounded cursor-pointer
         transition-all duration-200 transform
-        ${isSelected ? "ring-2 ring-offset-1 ring-primary scale-105 shadow-lg" : "hover:scale-103 shadow-sm"}
+        ${
+          isSelected
+            ? "relative z-20 ring-2 ring-emerald-600 ring-offset-1 scale-105 shadow-xl font-black"
+            : "relative z-0 hover:z-10 hover:scale-103 shadow-sm"
+        }
         ${categoryColor} text-white font-bold
         flex flex-col items-center justify-center text-center
         group
@@ -2434,8 +2440,14 @@ function ElementCell({ element, isSelected, onClick }: ElementCellProps) {
 
 export function PeriodicTable() {
   const [selectedElement, setSelectedElement] = useState<Element | null>(null)
+  const [isAtomicViewerOpen, setIsAtomicViewerOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterCategory, setFilterCategory] = useState<string>("all")
+
+  const handleElementClick = (element: Element) => {
+    setSelectedElement(element)
+    setIsAtomicViewerOpen(true)
+  }
 
   const filteredElements = allElements.filter((element) => {
     const matchesSearch =
@@ -2526,13 +2538,14 @@ export function PeriodicTable() {
                     >
                       {Array.from({ length: 18 }, (_, i) => i + 1).map((group) => {
                         const element = getElementByPosition(group, period)
+                        const isSelected = Boolean(element && selectedElement?.atomicNumber === element.atomicNumber)
                         return (
-                          <div key={`${group}-${period}`}>
+                          <div key={`${group}-${period}`} className={`relative ${isSelected ? "z-20" : "z-0"}`}>
                             {element ? (
                               <ElementCell
                                 element={element}
-                                isSelected={selectedElement?.atomicNumber === element.atomicNumber}
-                                onClick={() => setSelectedElement(element)}
+                                isSelected={isSelected}
+                                onClick={() => handleElementClick(element)}
                               />
                             ) : (
                               <div className="w-full h-10 sm:h-12 rounded bg-muted/10 border border-dashed border-muted"></div>
@@ -2551,14 +2564,18 @@ export function PeriodicTable() {
                         className="grid gap-0.5"
                         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(35px, 1fr))" }}
                       >
-                        {lanthanides.map((element) => (
-                          <ElementCell
-                            key={element.atomicNumber}
-                            element={element}
-                            isSelected={selectedElement?.atomicNumber === element.atomicNumber}
-                            onClick={() => setSelectedElement(element)}
-                          />
-                        ))}
+                        {lanthanides.map((element) => {
+                          const isSelected = selectedElement?.atomicNumber === element.atomicNumber
+                          return (
+                            <div key={element.atomicNumber} className={`relative ${isSelected ? "z-20" : "z-0"}`}>
+                              <ElementCell
+                                element={element}
+                                isSelected={isSelected}
+                                onClick={() => handleElementClick(element)}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
@@ -2571,14 +2588,18 @@ export function PeriodicTable() {
                         className="grid gap-0.5"
                         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(35px, 1fr))" }}
                       >
-                        {actinides.map((element) => (
-                          <ElementCell
-                            key={element.atomicNumber}
-                            element={element}
-                            isSelected={selectedElement?.atomicNumber === element.atomicNumber}
-                            onClick={() => setSelectedElement(element)}
-                          />
-                        ))}
+                        {actinides.map((element) => {
+                          const isSelected = selectedElement?.atomicNumber === element.atomicNumber
+                          return (
+                            <div key={element.atomicNumber} className={`relative ${isSelected ? "z-20" : "z-0"}`}>
+                              <ElementCell
+                                element={element}
+                                isSelected={isSelected}
+                                onClick={() => handleElementClick(element)}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
@@ -2711,6 +2732,42 @@ export function PeriodicTable() {
           )}
         </div>
       </div>
+
+      <Dialog open={isAtomicViewerOpen} onOpenChange={setIsAtomicViewerOpen}>
+        <DialogContent className="max-h-[85vh] max-w-6xl overflow-y-auto">
+          {selectedElement && (
+            <>
+              <DialogHeader className="pr-8">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-xl font-black text-white shadow-sm ${
+                      categoryColors[selectedElement.category]?.split(" ")[0]
+                    }`}
+                  >
+                    {selectedElement.symbol}
+                  </div>
+                  <div>
+                    <DialogTitle className="font-serif text-2xl">
+                      {selectedElement.name}
+                    </DialogTitle>
+                    <DialogDescription className="mt-1">
+                      Atomic number {selectedElement.atomicNumber} · Atomic mass {selectedElement.atomicMass} u
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="rounded-2xl border bg-gradient-to-br from-cyan-50/70 via-background to-indigo-50/70 p-3 dark:from-cyan-950/20 dark:to-indigo-950/20 sm:p-5">
+                <AtomicViewer
+                  elementName={selectedElement.name}
+                  symbol={selectedElement.symbol}
+                  atomicNumber={selectedElement.atomicNumber}
+                  electronConfiguration={selectedElement.electronConfiguration}
+                />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

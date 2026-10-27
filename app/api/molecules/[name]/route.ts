@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Op } from "sequelize";
 import { Molecule, ensureDbSynced } from "@/lib/db";
 import { parseSdf, inferGeometry } from "@/lib/pubchem";
 
@@ -22,142 +23,203 @@ export async function GET(
 
   const cleanName = decodeURIComponent(requestedName).trim();
   const normalizedName = normalizeMoleculeName(cleanName);
+  const isNumeric = /^\d+$/.test(cleanName);
+  const numericCid = isNumeric ? parseInt(cleanName, 10) : null;
 
-  // 1. Live PubChem Multi-Step Retrieval Pipeline
-  try {
-    // Step 1: Resolve Compound Name to CID (with formula fallback)
-    let cid: number | null = null;
-    const nameUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanName)}/cids/JSON`;
-    const nameRes = await fetch(nameUrl);
-
-    if (nameRes.ok) {
-      const nameJson = await nameRes.json();
-      cid = nameJson.IdentifierList?.CID?.[0] || null;
-    }
-
-    if (!cid) {
-      const formulaUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/fastformula/${encodeURIComponent(cleanName)}/cids/JSON`;
-      const formulaRes = await fetch(formulaUrl);
-      if (formulaRes.ok) {
-        const formulaJson = await formulaRes.json();
-        cid = formulaJson.IdentifierList?.CID?.[0] || null;
-      }
-    }
-
-    if (cid) {
-      // Step 2: Fetch 3D conformer SDF, fall back to 2D conformer SDF
-      let recordType: "3d" | "2d" = "3d";
-      let sdfRes = await fetch(
-        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/SDF?record_type=3d`
-      );
-
-      if (!sdfRes.ok) {
-        sdfRes = await fetch(
-          `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/SDF?record_type=2d`
-        );
-        recordType = "2d";
-      }
-
-      if (sdfRes.ok) {
-        const sdf = await sdfRes.text();
-        if (sdf && sdf.trim().length > 0) {
-          // Step 3: Fetch Structural Metadata for Info Card
-          let formula = cleanName;
-          let iupacName = cleanName;
-          let molecularWeight = "Unknown";
-
-          try {
-            const propUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/IUPACName,MolecularFormula,MolecularWeight/JSON`;
-            const propRes = await fetch(propUrl);
-            if (propRes.ok) {
-              const propJson = await propRes.json();
-              const props = propJson.PropertyTable?.Properties?.[0] || {};
-              if (props.MolecularFormula) formula = props.MolecularFormula;
-              if (props.IUPACName) iupacName = props.IUPACName;
-              if (props.MolecularWeight !== undefined) molecularWeight = String(props.MolecularWeight);
-            }
-          } catch {
-            // Non-critical metadata failure
-          }
-
-          const parsed = parseSdf(sdf);
-          const geo = inferGeometry(formula || cleanName, parsed.atoms.length, recordType);
-
-          const responsePayload = {
-            cid,
-            name: cleanName,
-            formula,
-            iupacName,
-            molecularWeight,
-            recordType,
-            sdf,
-            atoms: parsed.atoms,
-            bonds: parsed.bonds,
-            geometry: geo.geometry,
-            bondAngles: geo.bondAngles,
-          };
-
-          // Cache fresh structure in DB in background
-          try {
-            await ensureDbSynced();
-            await Molecule.upsert({
-              molecule: normalizedName,
-              formula,
-              category: "basic",
-              description: `PubChem CID ${cid}: ${iupacName}`,
-              atoms: parsed.atoms,
-              bonds: parsed.bonds,
-            });
-          } catch {
-            // Non-fatal if DB is offline or table issue
-          }
-
-          return NextResponse.json(responsePayload, { status: 200 });
-        }
-      }
-    }
-  } catch (pubChemErr: any) {
-    console.warn(`PubChem live retrieval error for "${cleanName}":`, pubChemErr.message);
-  }
-
-  // 2. Database Fallback (if PubChem had network issue or offline)
+  // =========================================================================
+  // STEP 1: DB Lookup First (Read-Through Cache)
+  // Check local molecules table by molecule name, formula, IUPAC name, or CID
+  // =========================================================================
   try {
     await ensureDbSynced();
-    const moleculeRecord = await Molecule.findOne({
-      where: { molecule: normalizedName },
+    const whereConditions: any[] = [
+      { molecule: normalizedName },
+      { formula: cleanName },
+      { formula: cleanName.toUpperCase() },
+      { iupacName: cleanName },
+      { iupacName: normalizedName },
+    ];
+
+    if (numericCid !== null) {
+      whereConditions.push({ cid: numericCid });
+    }
+
+    const cachedRecord = await Molecule.findOne({
+      where: {
+        [Op.or]: whereConditions,
+      },
     });
 
-    if (moleculeRecord) {
-      const recordData = moleculeRecord.get({ plain: true });
+    if (cachedRecord) {
+      const recordData = cachedRecord.get({ plain: true });
       const atoms = Array.isArray(recordData.atoms) ? recordData.atoms : [];
       const bonds = Array.isArray(recordData.bonds) ? recordData.bonds : [];
-      const geo = inferGeometry(recordData.formula || cleanName, atoms.length);
+      const geo = inferGeometry(
+        recordData.formula || cleanName,
+        atoms.length,
+        (recordData.recordType as any) || "3d"
+      );
 
       return NextResponse.json(
         {
-          name: cleanName,
+          cid: recordData.cid ?? null,
+          name: recordData.molecule || cleanName,
           formula: recordData.formula || cleanName,
-          category: recordData.category || "basic",
-          description: recordData.description || `Structure for ${cleanName}`,
+          iupacName: recordData.iupacName || recordData.molecule || cleanName,
+          molecularWeight: recordData.molecularWeight || "Unknown",
+          recordType: recordData.recordType || "3d",
+          sdf: recordData.sdf || null,
           atoms,
           bonds,
           geometry: geo.geometry,
           bondAngles: geo.bondAngles,
-          recordType: "3d",
+          source: "database",
         },
         { status: 200 }
       );
     }
   } catch (dbErr: any) {
-    console.warn("Database fallback also unavailable:", dbErr.message);
+    console.warn("Database first-lookup skipped or failed:", dbErr.message);
   }
 
-  // 3. Molecule Not Found
-  return NextResponse.json(
-    {
-      error: "NOT_FOUND",
-      message: "Molecule not found. Please verify the chemical name or formula.",
-    },
-    { status: 404 }
-  );
+  // =========================================================================
+  // STEP 2: PubChem Fallback + Auto-Persistence
+  // When not found in local DB, fetch from PubChem and save directly to MySQL
+  // =========================================================================
+  try {
+    // 2a. Resolve name / formula to PubChem CID
+    let cid: number | null = numericCid;
+
+    if (!cid) {
+      const nameUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanName)}/cids/JSON`;
+      const nameRes = await fetch(nameUrl);
+
+      if (nameRes.ok) {
+        const nameJson = await nameRes.json();
+        cid = nameJson.IdentifierList?.CID?.[0] || null;
+      }
+
+      if (!cid) {
+        const formulaUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/fastformula/${encodeURIComponent(cleanName)}/cids/JSON`;
+        const formulaRes = await fetch(formulaUrl);
+        if (formulaRes.ok) {
+          const formulaJson = await formulaRes.json();
+          cid = formulaJson.IdentifierList?.CID?.[0] || null;
+        }
+      }
+    }
+
+    if (!cid) {
+      return NextResponse.json(
+        {
+          error: "NOT_FOUND",
+          message: "Molecule not found. Please verify the chemical name or formula.",
+        },
+        { status: 404 }
+      );
+    }
+
+    // 2b. Fetch 3D conformer SDF with 2D fallback
+    let recordType: "3d" | "2d" = "3d";
+    let sdfRes = await fetch(
+      `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/SDF?record_type=3d`
+    );
+
+    if (!sdfRes.ok) {
+      sdfRes = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/SDF?record_type=2d`
+      );
+      recordType = "2d";
+    }
+
+    if (!sdfRes.ok) {
+      return NextResponse.json(
+        {
+          error: "NOT_FOUND",
+          message: "Structure data could not be retrieved from molecular database for this compound.",
+        },
+        { status: 404 }
+      );
+    }
+
+    const sdf = await sdfRes.text();
+    if (!sdf || sdf.trim().length === 0) {
+      return NextResponse.json(
+        {
+          error: "NOT_FOUND",
+          message: "Empty structure payload received from molecular database.",
+        },
+        { status: 404 }
+      );
+    }
+
+    // 2c. Fetch structural metadata
+    let formula = cleanName;
+    let iupacName = cleanName;
+    let molecularWeight = "Unknown";
+
+    try {
+      const propUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/IUPACName,MolecularFormula,MolecularWeight/JSON`;
+      const propRes = await fetch(propUrl);
+      if (propRes.ok) {
+        const propJson = await propRes.json();
+        const props = propJson.PropertyTable?.Properties?.[0] || {};
+        if (props.MolecularFormula) formula = props.MolecularFormula;
+        if (props.IUPACName) iupacName = props.IUPACName;
+        if (props.MolecularWeight !== undefined) molecularWeight = String(props.MolecularWeight);
+      }
+    } catch {
+      // Non-critical metadata failure
+    }
+
+    const parsed = parseSdf(sdf);
+    const geo = inferGeometry(formula || cleanName, parsed.atoms.length, recordType);
+
+    const responsePayload = {
+      cid,
+      name: cleanName,
+      formula,
+      iupacName,
+      molecularWeight,
+      recordType,
+      sdf,
+      atoms: parsed.atoms,
+      bonds: parsed.bonds,
+      geometry: geo.geometry,
+      bondAngles: geo.bondAngles,
+      source: "pubchem_persisted",
+    };
+
+    // 2d. Auto-Persist to MySQL molecules table
+    try {
+      await ensureDbSynced();
+      await Molecule.upsert({
+        molecule: normalizedName,
+        formula,
+        category: "basic",
+        description: `CID ${cid}: ${iupacName}`,
+        cid,
+        iupacName,
+        molecularWeight,
+        sdf,
+        recordType,
+        atoms: parsed.atoms,
+        bonds: parsed.bonds,
+      });
+      console.log(`Successfully cached "${cleanName}" (CID: ${cid}) to local MySQL database.`);
+    } catch (saveErr: any) {
+      console.warn(`Auto-persistence to DB failed for "${cleanName}":`, saveErr.message);
+    }
+
+    return NextResponse.json(responsePayload, { status: 200 });
+  } catch (err: any) {
+    console.error(`Molecule retrieval exception for "${cleanName}":`, err.message);
+    return NextResponse.json(
+      {
+        error: "SERVER_ERROR",
+        message: "An unexpected error occurred while resolving the molecule structure.",
+      },
+      { status: 500 }
+    );
+  }
 }

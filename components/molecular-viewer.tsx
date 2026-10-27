@@ -547,9 +547,9 @@ export function MolecularViewer() {
                   <div className="p-6 rounded-2xl bg-card border border-border/80 shadow-lg flex flex-col items-center max-w-sm text-center space-y-3">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <div>
-                      <h4 className="font-semibold text-sm">Querying PubChem Pipeline...</h4>
+                      <h4 className="font-semibold text-sm">Querying Molecular Database...</h4>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Resolving CID identifier and retrieving 3D conformer coordinates
+                        Resolving structural data and retrieving 3D conformer coordinates
                       </p>
                     </div>
                   </div>
@@ -569,7 +569,7 @@ export function MolecularViewer() {
                         target="_blank"
                         rel="noreferrer"
                         className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5"
-                        title="View record on NCBI PubChem"
+                        title="View compound reference record"
                       >
                         CID #{molecule.cid}
                         <ExternalLink className="h-3 w-3" />
@@ -668,7 +668,7 @@ export function MolecularViewer() {
                 <CardTitle className="font-serif text-base">Compound Identity</CardTitle>
               </div>
               <CardDescription className="text-xs">
-                Structural intelligence verified via PubChem PUG REST database
+                Verified 3D conformer and spatial structure intelligence
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
