@@ -37,9 +37,9 @@ export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
     setError("")
     setSuccess("")
 
-    const successLogin = await login(loginForm.email, loginForm.password)
-    if (!successLogin) {
-      setError("Invalid email or password")
+    const loginResult = await login(loginForm.email, loginForm.password)
+    if (!loginResult.success) {
+      setError(loginResult.error)
     } else {
       router.push("/") // Redirect to home layout upon clean authorization token verification
     }
@@ -86,11 +86,12 @@ export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
         return
       }
 
-      const data = await response.json()
-      if (data.error === "EMAIL_ALREADY_EXISTS") {
+      const contentType = response.headers.get("content-type") ?? ""
+      const data = contentType.includes("application/json") ? await response.json() : null
+      if (data?.error === "EMAIL_ALREADY_EXISTS") {
         setError("This email is already registered. Please sign in instead.")
       } else {
-        setError(data.error || "Registration failed")
+        setError(data?.error || `Registration failed (HTTP ${response.status}). Please try again.`)
       }
     } catch (err) {
       console.error("Signup request failed:", err)
@@ -107,7 +108,13 @@ export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
-            <Image src="/ChemCurious_logo.svg" alt="ChemCurious Logo" width={44} height={44} />
+            <Image
+              src="/ChemCurious_logo.svg"
+              alt="ChemCurious Logo"
+              width={130}
+              height={44}
+              className="h-11 w-auto"
+            />
           </div>
           <CardTitle className="text-2xl font-bold text-primary">ChemCurious</CardTitle>
           <CardDescription>Sign in to track your progress and save your work</CardDescription>

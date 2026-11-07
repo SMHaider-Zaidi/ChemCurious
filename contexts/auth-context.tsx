@@ -11,9 +11,11 @@ interface User {
   createdAt?: string
 }
 
+type LoginResult = { success: true } | { success: false; error: string }
+
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<LoginResult>
   signup: (email: string, password: string, name: string, institution: string) => Promise<boolean>
   logout: () => void
   isLoading: boolean
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     setIsLoading(true)
     try {
       const response = await fetch("/api/auth/login", {
@@ -56,18 +58,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data)
-        setIsLoading(false)
-        return true
+      const contentType = response.headers.get("content-type") ?? ""
+      if (!response.ok) {
+        const data = contentType.includes("application/json") ? await response.json() : null
+        return {
+          success: false,
+          error: data?.error || `Sign in failed (HTTP ${response.status}). Please try again.`,
+        }
       }
+
+      if (!contentType.includes("application/json")) {
+        return { success: false, error: "The sign-in service returned an unexpected response." }
+      }
+
+      const data = await response.json()
+      setUser(data)
+      return { success: true }
     } catch (err) {
       console.error("Login request failed:", err)
+      return { success: false, error: "Unable to sign in. Please try again." }
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
-    return false
   }
 
   const signup = async (
