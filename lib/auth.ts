@@ -1,6 +1,21 @@
 import crypto from "crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || "chemcurious-fallback-secret-2026-very-secure-key";
+export * from "./auth-constants";
+
+const RAW_SECRET = process.env.JWT_SECRET;
+if (process.env.NODE_ENV === "production") {
+  if (!RAW_SECRET || RAW_SECRET.length < 32) {
+    throw new Error(
+      "FATAL: JWT_SECRET environment variable is missing or less than 32 characters in production."
+    );
+  }
+} else if (!RAW_SECRET) {
+  console.warn(
+    "[DEV WARNING] JWT_SECRET is not configured in .env.local; using fallback development key."
+  );
+}
+
+const JWT_SECRET = RAW_SECRET || "chemcurious-fallback-secret-2026-very-secure-key";
 
 /**
  * Hashes a plain-text password using Node.js pbkdf2.

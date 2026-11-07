@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { User, ensureDbSynced } from "@/lib/db";
-import { verifyPassword, signToken } from "@/lib/auth";
+import { verifyPassword, signToken, STUDENT_SESSION_COOKIE, ADMIN_SESSION_COOKIE } from "@/lib/auth";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
@@ -27,6 +27,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
+    // Update last_login_at
+    user.lastLoginAt = new Date();
+    await user.save();
+
     // Create session token
     const token = signToken({
       id: user.id,
@@ -34,15 +38,27 @@ export async function POST(request: Request) {
       name: user.name,
     });
 
-    // Set HttpOnly session cookie
     const cookieStore = await cookies();
-    cookieStore.set("chemistry-session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 86400, // 1 day in seconds
-      path: "/",
-    });
+    const isProd = process.env.NODE_ENV === "production";
+
+    // Set appropriate isolated session cookie based on user role
+    if (user.role === "admin" || user.role === "staff") {
+      cookieStore.set(ADMIN_SESSION_COOKIE, token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "strict",
+        maxAge: 86400,
+        path: "/",
+      });
+    } else {
+      cookieStore.set(STUDENT_SESSION_COOKIE, token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "strict",
+        maxAge: 86400,
+        path: "/",
+      });
+    }
 
     return NextResponse.json({
       id: user.id,

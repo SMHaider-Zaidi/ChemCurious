@@ -79,6 +79,34 @@ function MoleculeViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
+  const atoms = useMemo(() => {
+    if (!data?.atoms) return [];
+    if (Array.isArray(data.atoms)) return data.atoms;
+    if (typeof data.atoms === "string") {
+      try {
+        const p = JSON.parse(data.atoms);
+        return Array.isArray(p) ? p : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [data?.atoms]);
+
+  const bonds = useMemo(() => {
+    if (!data?.bonds) return [];
+    if (Array.isArray(data.bonds)) return data.bonds;
+    if (typeof data.bonds === "string") {
+      try {
+        const p = JSON.parse(data.bonds);
+        return Array.isArray(p) ? p : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [data?.bonds]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -109,7 +137,7 @@ function MoleculeViewer({
   }, []);
 
   useEffect(() => {
-    if (!isScriptLoaded || !containerRef.current || !data?.atoms?.length) return;
+    if (!isScriptLoaded || !containerRef.current || !atoms.length) return;
 
     const globalWindow = window as Window & { $3Dmol?: any };
     const $3Dmol = globalWindow.$3Dmol;
@@ -127,11 +155,11 @@ function MoleculeViewer({
     });
     viewer.setBackgroundColor(0xffffff, 0);
 
-    const formattedAtoms = data.atoms.map((atom, index) => {
+    const formattedAtoms = atoms.map((atom, index) => {
       const adjacent: number[] = [];
       const orders: number[] = [];
 
-      (data.bonds || []).forEach((bond) => {
+      bonds.forEach((bond) => {
         if (bond.source === index) {
           adjacent.push(bond.target);
           orders.push(bond.order || 1);
@@ -181,9 +209,9 @@ function MoleculeViewer({
       }
       containerRef.current?.replaceChildren();
     };
-  }, [autoRotate, data, isScriptLoaded]);
+  }, [autoRotate, atoms, bonds, isScriptLoaded]);
 
-  if (!data?.atoms?.length) {
+  if (!atoms.length) {
     return (
       <div
         className={`flex h-full ${minHeightClass} flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/25 p-4 text-center text-muted-foreground`}

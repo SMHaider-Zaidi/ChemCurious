@@ -1,0 +1,18 @@
+export const adminKeys = {
+  me: ['admin', 'me'] as const,
+  dashboard: ['admin', 'dashboard'] as const,
+  chapters: (filters?: Record<string, unknown>) => ['admin', 'chapters', filters] as const,
+  chapter: (id: number) => ['admin', 'chapter', id] as const,
+  questions: (filters?: Record<string, unknown>) => ['admin', 'questions', filters] as const,
+  question: (id: number) => ['admin', 'question', id] as const,
+  reactions: (filters?: Record<string, unknown>) => ['admin', 'reactions', filters] as const,
+  reaction: (id: number) => ['admin', 'reaction', id] as const,
+  molecules: (filters?: Record<string, unknown>) => ['admin', 'molecules', filters] as const,
+  molecule: (id: number) => ['admin', 'molecule', id] as const,
+  students: (filters?: Record<string, unknown>) => ['admin', 'students', filters] as const,
+  student: (id: number) => ['admin', 'student', id] as const,
+  leaderboard: (filters?: Record<string, unknown>) => ['admin', 'leaderboard', filters] as const,
+  analytics: (filters?: Record<string, unknown>) => ['admin', 'analytics', filters] as const,
+  users: (filters?: Record<string, unknown>) => ['admin', 'users', filters] as const,
+  auditLogs: (filters?: Record<string, unknown>) => ['admin', 'audit-logs', filters] as const,
+};
