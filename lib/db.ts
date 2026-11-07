@@ -897,7 +897,7 @@ export async function ensureDbSynced(): Promise<void> {
   if (!authPromise) {
     authPromise = sequelize
       .authenticate()
-      .then(() => {
+      .then(async () => {
         // Authenticated successfully
         try { await SystemSetting.sync(); } catch (syncErr) { console.warn("Could not sync SystemSetting table:", syncErr); }
       })
