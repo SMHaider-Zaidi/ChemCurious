@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Chapter, Question, sequelize } from '@/lib/db'; // adjust path to db if needed
+import { Chapter, Question, sequelize, ensureDbSynced } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const chapterId = searchParams.get('chapter_id');
 
   try {
+    await ensureDbSynced();
+
     // 1. Fetch specific chapter questions if chapter_id is supplied
     if (chapterId) {
       const questions = await Question.findAll({
@@ -41,9 +43,15 @@ export async function GET(request: Request) {
     }
 
     // 2. Query chapters with question counts using Sequelize
-    const whereCondition = classLevelParam
-      ? { class: String(classLevelParam) } // handles "10", "Class 10", or 10
-      : {};
+    let whereCondition: any = {};
+    if (classLevelParam) {
+      const match = String(classLevelParam).match(/\d+/);
+      if (match) {
+        whereCondition.class = parseInt(match[0], 10);
+      } else {
+        whereCondition.class = classLevelParam;
+      }
+    }
 
     const chapters = await Chapter.findAll({
       where: whereCondition,
@@ -53,13 +61,14 @@ export async function GET(request: Request) {
         ['chapter_title', 'title'],
         ['class', 'class_level'],
         [
-          sequelize.fn('COUNT', sequelize.col('Questions.id')),
+          sequelize.fn('COUNT', sequelize.col('questions.id')),
           'question_count',
         ],
       ],
       include: [
         {
           model: Question,
+          as: 'questions',
           attributes: [], // don't load individual question rows here
         },
       ],

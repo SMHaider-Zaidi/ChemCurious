@@ -41,6 +41,8 @@ export async function GET() {
         id: userId ? userId.toString() : "",
         email: userEmail || "",
         name: userName || "",
+        role: dbUser.role || "student",
+        institution: dbUser.institution || "",
         createdAt: userCreatedAt ? new Date(userCreatedAt).toISOString() : new Date().toISOString(),
       }
     });

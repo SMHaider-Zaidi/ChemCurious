@@ -893,6 +893,41 @@ QuizAttemptAnswer.belongsTo(Question, { foreignKey: "question_id", as: "question
 // ==========================================
 let authPromise: Promise<void> | null = null;
 
+async function ensureDbColumns(): Promise<void> {
+  const ensureCol = async (table: string, column: string, def: string) => {
+    try {
+      const [cols] = await sequelize.query(`SHOW COLUMNS FROM \`${table}\` LIKE '${column}'`);
+      if ((cols as any[]).length === 0) {
+        await sequelize.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${def}`);
+      }
+    } catch (e) {
+      console.warn(`[ensureDbColumns] Notice on ${table}.${column}:`, (e as any)?.message);
+    }
+  };
+
+  await ensureCol('reactions', 'conditions', 'TEXT NULL');
+  await ensureCol('reactions', 'status', "ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published'");
+  await ensureCol('reactions', 'created_by', 'INT NULL');
+  await ensureCol('reactions', 'updated_by', 'INT NULL');
+  await ensureCol('chapters', 'status', "ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published'");
+  await ensureCol('chapters', 'published_at', 'DATETIME NULL');
+  await ensureCol('chapters', 'updated_at', 'DATETIME NULL');
+  await ensureCol('questions', 'status', "ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published'");
+  await ensureCol('questions', 'image_url', 'VARCHAR(500) NULL');
+  await ensureCol('questions', 'marks', 'INT NOT NULL DEFAULT 1');
+  await ensureCol('questions', 'created_by', 'INT NULL');
+  await ensureCol('questions', 'updated_by', 'INT NULL');
+  await ensureCol('questions', 'updated_at', 'DATETIME NULL');
+  await ensureCol('molecules', 'status', "ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published'");
+  await ensureCol('molecules', 'created_by', 'INT NULL');
+  await ensureCol('molecules', 'updated_by', 'INT NULL');
+  await ensureCol('quiz_attempts', 'chapter_id', 'INT NULL');
+  await ensureCol('quiz_attempts', 'time_spent_seconds', 'INT NULL');
+  await ensureCol('quiz_attempts', 'started_at', 'DATETIME NULL');
+  await ensureCol('quiz_attempts', 'marks_earned', 'INT NULL');
+  await ensureCol('quiz_attempts', 'marks_total', 'INT NULL');
+}
+
 export async function ensureDbSynced(): Promise<void> {
   if (!authPromise) {
     authPromise = sequelize
@@ -900,6 +935,7 @@ export async function ensureDbSynced(): Promise<void> {
       .then(async () => {
         // Authenticated successfully
         try { await SystemSetting.sync(); } catch (syncErr) { console.warn("Could not sync SystemSetting table:", syncErr); }
+        try { await ensureDbColumns(); } catch (colErr) { console.warn("Could not ensure DB columns:", colErr); }
       })
       .catch((err) => {
         authPromise = null;

@@ -39,7 +39,7 @@ export function Navigation() {
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
             <Image
-              src="ChemCurious_logo_HD.png"
+              src="/ChemCurious_logo_HD.png"
               alt="ChemCurious"
               width={140}
               height={38}
@@ -63,16 +63,26 @@ export function Navigation() {
             ))}
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {user ? (
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">{user.name}</span>
+                <div className="flex items-center space-x-2 rounded-full bg-slate-100 dark:bg-slate-800/90 px-3 py-1.5 border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary font-bold text-xs uppercase">
+                    {user.name ? user.name.charAt(0) : "U"}
+                  </div>
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 max-w-[160px] truncate">
+                    {user.name}
+                  </span>
                 </div>
-                <Button variant="outline" size="sm" onClick={logout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center gap-1.5 text-slate-700 hover:text-red-600 hover:border-red-300 dark:text-slate-300 dark:hover:text-red-400 transition-colors cursor-pointer"
+                  title="Logout"
+                >
+                  <span>Logout</span>
+                  <LogOut className="h-4 w-4" />
                 </Button>
               </div>
             ) : (

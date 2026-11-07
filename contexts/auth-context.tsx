@@ -86,10 +86,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await fetch("/api/auth/me")
         if (response.ok) {
           const data = await response.json()
-          if (data.user && data.user.role === "student") {
+          if (data && data.user) {
             // Only adopt student session if this tab isn't tagged as an active admin session
             if (portal !== "admin") {
-              setUser(data.user)
+              setUser({
+                id: String(data.user.id),
+                email: data.user.email,
+                name: data.user.name,
+                institution: data.user.institution || "",
+                role: data.user.role || "student",
+                createdAt: data.user.createdAt,
+              })
               if (!getSessionPortal()) {
                 setSessionPortal("student")
               }

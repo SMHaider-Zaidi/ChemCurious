@@ -371,8 +371,8 @@ export function MolecularViewer() {
             >
               {searching ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Resolving...
+                  <FlaskConical className="h-4 w-4 animate-bounce" />
+                  Synthesizing...
                 </>
               ) : (
                 <>
@@ -543,13 +543,18 @@ export function MolecularViewer() {
             <div className="relative flex-1 w-full h-full min-h-[500px]">
               {/* Loading Overlay */}
               {searching && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-xs transition-opacity duration-200">
-                  <div className="p-6 rounded-2xl bg-card border border-border/80 shadow-lg flex flex-col items-center max-w-sm text-center space-y-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <div>
-                      <h4 className="font-semibold text-sm">Querying Molecular Database...</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Resolving structural data and retrieving 3D conformer coordinates
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm transition-opacity duration-200">
+                  <div className="p-8 rounded-2xl bg-card/95 border border-border/80 shadow-xl flex flex-col items-center max-w-sm text-center space-y-4">
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute h-16 w-16 animate-ping rounded-full bg-primary/20" />
+                      <FlaskConical className="h-12 w-12 animate-bounce text-primary" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="animate-pulse text-base font-semibold text-foreground block">
+                        Breaking bonds and synthesizing 3D structure...
+                      </span>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Resolving conformer geometry and calculating spatial coordinates
                       </p>
                     </div>
                   </div>

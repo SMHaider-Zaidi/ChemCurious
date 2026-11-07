@@ -64,6 +64,8 @@ export async function POST(request: Request) {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: user.role || "student",
+      institution: user.institution || "",
     });
   } catch (error: any) {
     console.error("Login API error:", error);
