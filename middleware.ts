@@ -1,40 +1,71 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ADMIN_SESSION_COOKIE, STUDENT_SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/auth-constants";
 
-const PROTECTED_ROUTES = ["/periodic-table", "/quizzes", "/reactions", "/molecules", "/periodic"];
-
-function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
-}
-
-function hasValidSession(request: NextRequest): boolean {
-  const sessionCookie = request.cookies.get("chemistry-session");
-  const value = sessionCookie?.value?.trim();
-  return Boolean(value);
-}
+const STUDENT_PROTECTED_ROUTES = [
+  "/periodic-table",
+  "/quizzes",
+  "/reactions",
+  "/molecules",
+  "/periodic",
+  "/dashboard",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
 
-  if (!isProtectedRoute(pathname)) {
-    return NextResponse.next();
+  const adminSession = request.cookies.get(ADMIN_SESSION_COOKIE)?.value?.trim();
+  const studentSession =
+    request.cookies.get(STUDENT_SESSION_COOKIE)?.value?.trim() ||
+    request.cookies.get(LEGACY_SESSION_COOKIE)?.value?.trim();
+
+  // 1. Admin Routes (/admin, /admin/*)
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    if (pathname === "/admin/forbidden") {
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
+
+    // Protected admin routes: requires admin session
+    if (!adminSession) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/auth";
+      loginUrl.searchParams.set("portal", "admin");
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  if (!hasValidSession(request)) {
+  // 2. Auth Page (/auth)
+  if (pathname === "/auth") {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  // 3. Protected Student Routes
+  const isStudentProtected = STUDENT_PROTECTED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+
+  if (isStudentProtected && !studentSession) {
     const signInUrl = request.nextUrl.clone();
-    // FIXED: Changed from '/sign-in' to '/auth' to perfectly align with your app/auth directory
     signInUrl.pathname = "/auth"; 
     signInUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(signInUrl);
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
   matcher: [
+    "/admin",
+    "/admin/:path*",
+    "/auth",
+    "/dashboard",
+    "/dashboard/:path*",
     "/periodic-table",
     "/periodic-table/:path*",
     "/periodic",

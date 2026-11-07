@@ -108,10 +108,12 @@ export function formatChemicalFormula(formula: string, conditions?: string | nul
 
 export function formatSpeciesLabel(
   coefficient: number,
-  molecule: string,
+  molecule?: string | null,
   formula?: string | null
 ): React.ReactNode {
-  const chemical = (formula || molecule).trim();
+  const chemical = String(formula || molecule || "").trim();
+  if (!chemical) return null;
+
   const looksChemical =
     Boolean(formula) ||
     /^(\d+)?[A-Z][a-z]?(\d|$)/.test(chemical) ||
@@ -127,26 +129,27 @@ export function formatSpeciesLabel(
       <>
         {coefficient}
         {" × "}
-        {molecule}
+        {chemical}
       </>
     );
   }
 
-  return molecule;
+  return chemical;
 }
 
 export function buildReactionEquation(reaction: {
-  reactants: Array<{ molecule: string; coefficient: number; data?: { formula?: string } | null }>;
-  products: Array<{ molecule: string; coefficient: number; data?: { formula?: string } | null }>;
+  reactants: Array<{ molecule?: string; coefficient: number; data?: { formula?: string } | null }>;
+  products: Array<{ molecule?: string; coefficient: number; data?: { formula?: string } | null }>;
 }): string {
   const sideToString = (
-    entries: Array<{ molecule: string; coefficient: number; data?: { formula?: string } | null }>
+    entries: Array<{ molecule?: string; coefficient: number; data?: { formula?: string } | null }>
   ) =>
-    entries
+    (entries || [])
       .map((entry) => {
-        const label = entry.data?.formula || entry.molecule;
+        const label = entry?.data?.formula || entry?.molecule || "";
         return entry.coefficient > 1 ? `${entry.coefficient}${label}` : label;
       })
+      .filter(Boolean)
       .join(" + ");
 
   return `${sideToString(reaction.reactants)} -> ${sideToString(reaction.products)}`;

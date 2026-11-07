@@ -170,15 +170,28 @@ function QuizViewer({ chapter, onBack }: { chapter: Chapter; onBack: () => void 
       setSubmitError(null)
 
       try {
+        const optionKeys = ["A", "B", "C", "D"];
+        const answerRecords = questions.map((q) => {
+          const selectedIdx = answers[q.id];
+          const hasSelected = selectedIdx !== undefined && selectedIdx !== null;
+          return {
+            questionId: Number(q.id),
+            selectedOption: hasSelected ? (optionKeys[selectedIdx] || null) : null,
+            isCorrect: hasSelected ? selectedIdx === q.correctAnswer : false,
+          };
+        });
+
         const response = await fetch("/api/quizzes/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user?.id,
             quizId: chapter.id,
+            chapterId: chapter.id,
             chapterName: chapter.title,
             score,
             totalQuestions: questions.length,
+            answers: answerRecords,
           }),
         })
 

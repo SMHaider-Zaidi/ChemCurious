@@ -13,33 +13,94 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<boolean>
+  error: string | null
+  login: (email: string, password: string, portal?: "student" | "admin") => Promise<User | null>
   signup: (email: string, password: string, name: string, institution: string) => Promise<boolean>
   logout: () => void
   isLoading: boolean
+}
+
+function getSessionPortal(): string | null {
+  try {
+    return typeof window !== "undefined" ? window.sessionStorage.getItem("chem_active_portal") : null
+  } catch {
+    return null
+  }
+}
+
+function setSessionPortal(val: string): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("chem_active_portal", val)
+    }
+  } catch {}
+}
+
+function removeSessionPortal(): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("chem_active_portal")
+    }
+  } catch {}
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session via HTTP cookie on mount
+    // Check for existing session via HTTP cookie + tab-level sessionStorage
     const checkSession = async () => {
       try {
+        const portal = getSessionPortal()
+
+        if (portal === "admin") {
+          // This tab was explicitly authenticated or active as Admin
+          const response = await fetch("/api/admin/me")
+          if (response.ok) {
+            const data = await response.json()
+            if (data && (data.role === "admin" || data.role === "staff")) {
+              setUser({
+                id: String(data.id),
+                email: data.email,
+                name: data.name,
+                institution: data.institution || "",
+                role: data.role,
+                status: data.status,
+              })
+              setIsLoading(false)
+              return
+            }
+          }
+          removeSessionPortal()
+        }
+
+        // Student session check
         const response = await fetch("/api/auth/me")
         if (response.ok) {
           const data = await response.json()
-          if (data.user) {
-            setUser(data.user)
+          if (data.user && data.user.role === "student") {
+            // Only adopt student session if this tab isn't tagged as an active admin session
+            if (portal !== "admin") {
+              setUser(data.user)
+              if (!getSessionPortal()) {
+                setSessionPortal("student")
+              }
+            } else {
+              setUser(null)
+            }
           } else {
             setUser(null)
           }
+        } else {
+          setUser(null)
         }
       } catch (err) {
         console.error("Session verification failed:", err)
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
@@ -47,10 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    email: string,
+    password: string,
+    portal: "student" | "admin" = "student"
+  ): Promise<User | null> => {
     setIsLoading(true)
+    setError(null)
     try {
-      const response = await fetch("/api/auth/login", {
+      const endpoint = portal === "admin" ? "/api/auth/admin-login" : "/api/auth/login"
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -58,12 +125,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const data = await response.json()
-        setUser(data)
+        const userObj: User = {
+          id: String(data.id),
+          email: data.email,
+          name: data.name,
+          institution: data.institution || "",
+          role: data.role,
+          status: data.status,
+        }
+        setUser(userObj)
+        setError(null)
+        setSessionPortal(data.role === "admin" || data.role === "staff" ? "admin" : "student")
         setIsLoading(false)
-        return true
+        return userObj
+      } else {
+        const errData = await response.json().catch(() => null)
+        const errMsg = errData?.error || "Invalid email or password"
+        setError(errMsg)
       }
     } catch (err) {
       console.error("Login request failed:", err)
+      setError("Network error: Unable to connect to server")
     }
 
     setIsLoading(false)
@@ -77,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     institution: string
   ): Promise<boolean> => {
     setIsLoading(true)
+    setError(null)
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
@@ -87,11 +170,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json()
         setUser(data)
+        setSessionPortal("student")
         setIsLoading(false)
         return true
+      } else {
+        const errData = await response.json().catch(() => null)
+        setError(errData?.error || "Registration failed")
       }
     } catch (err) {
       console.error("Signup request failed:", err)
+      setError("Network error: Unable to connect to server")
     }
 
     setIsLoading(false)
@@ -100,17 +188,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setIsLoading(true)
+    const activePortal = getSessionPortal()
+    const isCurrentAdmin = activePortal === "admin" || user?.role === "admin" || user?.role === "staff"
+
     try {
-      await fetch("/api/auth/logout", { method: "POST" })
+      if (isCurrentAdmin) {
+        await fetch("/api/auth/admin-logout", { method: "POST" })
+      } else {
+        await fetch("/api/auth/logout", { method: "POST" })
+      }
     } catch (err) {
       console.error("Logout request failed:", err)
     }
+
+    removeSessionPortal()
     setUser(null)
+    setError(null)
     setIsLoading(false)
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, error, login, signup, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

@@ -279,40 +279,72 @@ export async function GET() {
 
     const reactions = await Reaction.findAll();
 
+    // Helper to safely parse JSON or array components
+    const parseJsonArray = (raw: any): any[] => {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
+
+    // Collect all molecule IDs and molecule names from all reactions
+    const referencedMoleculeIds = new Set<number>();
     const moleculeNamesSet = new Set<string>();
+
     reactions.forEach((reaction) => {
-      const reactants = (reaction.reactants as Array<{ molecule?: string }> | undefined) || [];
-      const products = (reaction.products as Array<{ molecule?: string }> | undefined) || [];
+      const reactants = parseJsonArray(reaction.reactants);
+      const products = parseJsonArray(reaction.products);
 
       reactants.forEach((entry) => {
-        if (entry.molecule) {
-          moleculeNamesSet.add(normalizeMoleculeName(entry.molecule));
-        }
+        if (entry.moleculeId) referencedMoleculeIds.add(Number(entry.moleculeId));
+        if (entry.molecule) moleculeNamesSet.add(normalizeMoleculeName(entry.molecule));
       });
 
       products.forEach((entry) => {
-        if (entry.molecule) {
-          moleculeNamesSet.add(normalizeMoleculeName(entry.molecule));
-        }
+        if (entry.moleculeId) referencedMoleculeIds.add(Number(entry.moleculeId));
+        if (entry.molecule) moleculeNamesSet.add(normalizeMoleculeName(entry.molecule));
       });
     });
 
-    const normalizedMoleculeNames = Array.from(moleculeNamesSet);
-
+    // Fetch all molecules from DB with geometry and formulas
     const moleculeRecords = await Molecule.findAll({
-      attributes: ["molecule", "formula", "atoms", "bonds"],
+      attributes: ["id", "molecule", "formula", "atoms", "bonds"],
     });
 
+    const moleculeById = new Map<number, any>();
     const moleculeDataMap: Record<string, MoleculeData> = {};
+
     moleculeRecords.forEach((record: any) => {
       const normalizedName = normalizeMoleculeName(record.molecule);
-      moleculeDataMap[normalizedName] = {
-        atoms: record.atoms || [],
-        bonds: record.bonds || [],
+      const atoms = parseJsonArray(record.atoms);
+      const bonds = parseJsonArray(record.bonds);
+      const data: MoleculeData = {
+        atoms,
+        bonds,
         formula: record.formula,
       };
+      moleculeById.set(record.id, {
+        id: record.id,
+        molecule: record.molecule,
+        formula: record.formula,
+        atoms,
+        bonds,
+      });
+      moleculeDataMap[normalizedName] = data;
+      if (record.formula) {
+        moleculeDataMap[normalizeMoleculeName(record.formula)] = data;
+      }
     });
 
+    // Check for missing molecules that need PubChem dynamic fetching
+    const normalizedMoleculeNames = Array.from(moleculeNamesSet);
     const missingMoleculeNames = normalizedMoleculeNames.filter((name) => !moleculeDataMap[name]);
 
     if (missingMoleculeNames.length > 0) {
@@ -342,24 +374,44 @@ export async function GET() {
       );
     }
 
+    const resolveComponent = (entry: any) => {
+      let molRecord: any = null;
+      if (entry.moleculeId) {
+        molRecord = moleculeById.get(Number(entry.moleculeId));
+      }
+      if (!molRecord && entry.molecule) {
+        const norm = normalizeMoleculeName(entry.molecule);
+        molRecord = moleculeRecords.find(
+          (m: any) => normalizeMoleculeName(m.molecule) === norm || normalizeMoleculeName(m.formula) === norm
+        );
+      }
+
+      const moleculeName = entry.molecule || molRecord?.molecule || molRecord?.formula || "Unknown";
+      const formula = molRecord?.formula || entry.formula || moleculeName;
+      const key = normalizeMoleculeName(moleculeName);
+      const atoms = parseJsonArray(molRecord?.atoms);
+      const bonds = parseJsonArray(molRecord?.bonds);
+      const cached = moleculeDataMap[key] || moleculeDataMap[normalizeMoleculeName(formula)] || null;
+      const data: MoleculeData | null = atoms.length
+        ? { atoms, bonds, formula }
+        : cached;
+
+      return {
+        moleculeId: entry.moleculeId || molRecord?.id,
+        molecule: moleculeName,
+        formula,
+        coefficient: Number(entry.coefficient) || 1,
+        data,
+      };
+    };
+
     const enrichedReactions = reactions.map((reaction) => {
       const plainReaction = reaction.get({ plain: true });
+      const rawReactants = parseJsonArray(plainReaction.reactants);
+      const rawProducts = parseJsonArray(plainReaction.products);
 
-      const enrichedReactants = ((plainReaction.reactants as Array<{ molecule?: string }> | undefined) || []).map((entry) => {
-        const key = normalizeMoleculeName(entry.molecule || "");
-        return {
-          ...entry,
-          data: moleculeDataMap[key] || null,
-        };
-      });
-
-      const enrichedProducts = ((plainReaction.products as Array<{ molecule?: string }> | undefined) || []).map((entry) => {
-        const key = normalizeMoleculeName(entry.molecule || "");
-        return {
-          ...entry,
-          data: moleculeDataMap[key] || null,
-        };
-      });
+      const enrichedReactants = rawReactants.map(resolveComponent);
+      const enrichedProducts = rawProducts.map(resolveComponent);
 
       return {
         ...plainReaction,
