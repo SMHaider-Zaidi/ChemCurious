@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { useAdminUsers, useUserMutations, useSystemSettings, useUpdateSettings } from '@/lib/admin/hooks';
+import { useAdminUsers, useUserMutations, useSystemSettings, useUpdateSettings, useAdminMe } from '@/lib/admin/hooks';
 import { demoAdapter } from '@/lib/admin/api/mock/adapter';
 import { IS_ADMIN_MOCK } from '@/lib/admin/api/client';
 import type { AdminUser, Role, AccountStatus } from '@/lib/admin/types';
@@ -95,9 +95,11 @@ export default function AdminUsersPage() {
   });
 
   const { setRole, setStatus } = useUserMutations();
+  const { data: me } = useAdminMe();
   const { data: settingsData, isLoading: settingsLoading } = useSystemSettings();
   const updateSettings = useUpdateSettings();
 
+  const isSelf = editingUser ? editingUser.id === (me?.id ?? 1) : false;
   const isRankVisible = settingsData?.showStudentRank ?? true;
 
   const handleToggleRank = (checked: boolean) => {
@@ -215,7 +217,7 @@ export default function AdminUsersPage() {
         <div className="space-y-0.5">
           <div className="font-medium text-xs text-foreground flex items-center gap-1.5">
             {row.name}
-            {row.id === 1 && (
+            {row.id === (me?.id ?? 1) && (
               <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.2 rounded font-normal">
                 You
               </span>
@@ -430,7 +432,7 @@ export default function AdminUsersPage() {
 
           {editingUser && (
             <div className="space-y-4 py-2">
-              {editingUser.id === 1 && (
+              {isSelf && (
                 <Alert className="bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertTitle className="text-xs font-semibold">Self Account Protected</AlertTitle>
@@ -446,7 +448,7 @@ export default function AdminUsersPage() {
                 <Select
                   value={selectedRole}
                   onValueChange={(val) => setSelectedRole(val as Role)}
-                  disabled={editingUser.id === 1}
+                  disabled={isSelf}
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Select role" />
@@ -510,7 +512,7 @@ export default function AdminUsersPage() {
               type="button"
               size="sm"
               className="text-xs"
-              disabled={editingUser?.id === 1 || setRole.isPending || setStatus.isPending}
+              disabled={isSelf || setRole.isPending || setStatus.isPending}
               onClick={handleSaveUser}
             >
               {setRole.isPending || setStatus.isPending ? 'Saving...' : 'Save Changes'}

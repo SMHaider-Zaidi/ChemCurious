@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import crypto from "crypto";
 import path from "path";
 import { Sequelize, DataTypes, Model, Optional } from "sequelize";
 
@@ -888,18 +889,157 @@ QuizAttemptAnswer.belongsTo(QuizAttempt, { foreignKey: "attempt_id", as: "attemp
 Question.hasMany(QuizAttemptAnswer, { foreignKey: "question_id", as: "attemptAnswers", onDelete: "RESTRICT" });
 QuizAttemptAnswer.belongsTo(Question, { foreignKey: "question_id", as: "question" });
 
+User.hasMany(AuditLog, { foreignKey: "user_id", as: "auditLogs", onDelete: "SET NULL" });
+AuditLog.belongsTo(User, { foreignKey: "user_id", as: "actor" });
+
 // ==========================================
 // SAFE DATABASE CONNECTION (NO RUNTIME SYNC)
 // ==========================================
 let authPromise: Promise<void> | null = null;
 
+async function initDb(): Promise<void> {
+  try {
+    await sequelize.authenticate();
+    try {
+      await SystemSetting.sync();
+    } catch (syncErr) {
+      console.warn("Could not sync SystemSetting table:", syncErr);
+    }
+  } catch (err) {
+    authPromise = null;
+    console.error("Sequelize database authentication failed:", err);
+    throw err;
+  }
+}
+
 export async function ensureDbSynced(): Promise<void> {
   if (!authPromise) {
     authPromise = sequelize
       .authenticate()
-      .then(() => {
+      .then(async () => {
         // Authenticated successfully
-        try { await SystemSetting.sync(); } catch (syncErr) { console.warn("Could not sync SystemSetting table:", syncErr); }
+        try {
+          // Auto-migrate missing columns if database was restored from an older backup
+          const [userCols]: any = await sequelize.query("SHOW COLUMNS FROM `users` LIKE 'role'");
+          if (!userCols || userCols.length === 0) {
+            console.log("Adding missing role/status columns to users table...");
+            await sequelize.query(`
+              ALTER TABLE \`users\`
+                ADD COLUMN \`role\` ENUM('student','staff','admin') NOT NULL DEFAULT 'student' AFTER \`institution\`,
+                ADD COLUMN \`status\` ENUM('active','suspended') NOT NULL DEFAULT 'active' AFTER \`role\`,
+                ADD COLUMN \`last_login_at\` DATETIME NULL AFTER \`status\`;
+            `);
+            console.log("Users table updated with role & status successfully.");
+          }
+
+          // Ensure default admin users exist and are active
+          try {
+            const salt = crypto.randomBytes(16).toString("hex");
+            const hash = crypto.pbkdf2Sync("haider123", salt, 10000, 64, "sha512").toString("hex");
+            const haiderPasswordHash = `${salt}:${hash}`;
+
+            const [haiderRows]: any = await sequelize.query(
+              "SELECT id, role, status FROM `users` WHERE `email` = 'haider321@gmail.com'"
+            );
+
+            if (!haiderRows || haiderRows.length === 0) {
+              await sequelize.query(
+                "INSERT INTO `users` (`name`, `email`, `password_hash`, `institution`, `role`, `status`, `created_at`, `updated_at`) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                {
+                  replacements: ["Haider", "haider321@gmail.com", haiderPasswordHash, "ChemCurious", "admin", "active"]
+                }
+              );
+              console.log("Seeded default admin user: haider321@gmail.com");
+            } else {
+              await sequelize.query(
+                "UPDATE `users` SET `role` = 'admin', `status` = 'active', `password_hash` = ? WHERE `email` = 'haider321@gmail.com'",
+                {
+                  replacements: [haiderPasswordHash]
+                }
+              );
+              console.log("Updated haider321@gmail.com to active admin with password");
+            }
+
+            // Also ensure Messum is active admin
+            await sequelize.query(
+              "UPDATE `users` SET `role` = 'admin', `status` = 'active' WHERE `email` = 'messum321@gmail.com'"
+            );
+          } catch (adminSeedErr) {
+            console.warn("Notice: could not auto-seed admin accounts:", adminSeedErr);
+          }
+
+          const [chapCols]: any = await sequelize.query("SHOW COLUMNS FROM `chapters` LIKE 'status'");
+          if (!chapCols || chapCols.length === 0) {
+            await sequelize.query(`
+              ALTER TABLE \`chapters\`
+                ADD COLUMN \`status\` ENUM('draft','published','archived') NOT NULL DEFAULT 'published',
+                ADD COLUMN \`published_at\` DATETIME NULL,
+                ADD COLUMN \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+            `);
+          }
+
+          const [questCols]: any = await sequelize.query("SHOW COLUMNS FROM `questions` LIKE 'status'");
+          if (!questCols || questCols.length === 0) {
+            await sequelize.query(`
+              ALTER TABLE \`questions\`
+                ADD COLUMN \`status\` ENUM('draft','published','archived') NOT NULL DEFAULT 'published',
+                ADD COLUMN \`image_url\` VARCHAR(500) NULL,
+                ADD COLUMN \`marks\` INT NOT NULL DEFAULT 1,
+                ADD COLUMN \`created_by\` INT NULL,
+                ADD COLUMN \`updated_by\` INT NULL,
+                ADD COLUMN \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                MODIFY COLUMN \`option_a\` TEXT NOT NULL,
+                MODIFY COLUMN \`option_b\` TEXT NOT NULL,
+                MODIFY COLUMN \`option_c\` TEXT NOT NULL,
+                MODIFY COLUMN \`option_d\` TEXT NOT NULL;
+            `);
+          }
+
+          const [reactCols]: any = await sequelize.query("SHOW COLUMNS FROM `reactions` LIKE 'status'");
+          if (!reactCols || reactCols.length === 0) {
+            await sequelize.query(`
+              ALTER TABLE \`reactions\`
+                ADD COLUMN \`status\` ENUM('draft','published','archived') NOT NULL DEFAULT 'published',
+                ADD COLUMN \`conditions\` TEXT NULL,
+                ADD COLUMN \`created_by\` INT NULL,
+                ADD COLUMN \`updated_by\` INT NULL;
+            `);
+          }
+
+          const [molCols]: any = await sequelize.query("SHOW COLUMNS FROM `molecules` LIKE 'status'");
+          if (!molCols || molCols.length === 0) {
+            await sequelize.query(`
+              ALTER TABLE \`molecules\`
+                ADD COLUMN \`status\` ENUM('draft','published','archived') NOT NULL DEFAULT 'published',
+                ADD COLUMN \`created_by\` INT NULL,
+                ADD COLUMN \`updated_by\` INT NULL;
+            `);
+          }
+
+          const [qaCols]: any = await sequelize.query("SHOW COLUMNS FROM `quiz_attempts` LIKE 'chapter_id'");
+          if (!qaCols || qaCols.length === 0) {
+            await sequelize.query(`
+              ALTER TABLE \`quiz_attempts\`
+                ADD COLUMN \`chapter_id\` INT(11) NULL AFTER \`quiz_id\`,
+                ADD COLUMN \`time_spent_seconds\` INT(11) NULL AFTER \`percentage\`,
+                ADD COLUMN \`started_at\` DATETIME NULL AFTER \`time_spent_seconds\`,
+                ADD COLUMN \`marks_earned\` INT(11) NULL AFTER \`started_at\`,
+                ADD COLUMN \`marks_total\` INT(11) NULL AFTER \`marks_earned\`;
+            `);
+            await sequelize.query(`
+              UPDATE \`quiz_attempts\` qa
+              INNER JOIN \`chapters\` c ON (qa.quiz_id = c.id OR qa.chapter_name = c.chapter_title)
+              SET qa.chapter_id = c.id
+              WHERE qa.chapter_id IS NULL;
+            `);
+          }
+
+          await AuditLog.sync();
+          await QuizAttemptAnswer.sync();
+          await SystemSetting.sync();
+        } catch (syncErr) {
+          console.warn("Database auto-sync warning:", syncErr);
+        }
       })
       .catch((err) => {
         authPromise = null;

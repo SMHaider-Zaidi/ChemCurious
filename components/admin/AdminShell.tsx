@@ -36,6 +36,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { useAuth } from '@/contexts/auth-context';
+import { useAdminMe } from '@/lib/admin/hooks';
 import { AdminThemeToggle } from './AdminThemeToggle';
 import { RoleBadge } from './StatusBadge';
 import { ADMIN_NAV_ITEMS } from '@/lib/admin/modules';
@@ -47,12 +48,23 @@ import { cn } from '@/lib/utils';
 interface AdminShellProps {
   children: ReactNode;
   initialRole?: Role;
+  initialName?: string;
+  initialEmail?: string;
 }
 
-export function AdminShell({ children, initialRole = 'admin' }: AdminShellProps) {
+export function AdminShell({
+  children,
+  initialRole = 'admin',
+  initialName,
+  initialEmail,
+}: AdminShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { data: adminMe } = useAdminMe();
+  const activeRole = adminMe?.role || initialRole || 'admin';
+  const activeName = adminMe?.name || initialName || user?.name || 'Administrator';
+  const activeEmail = adminMe?.email || initialEmail || user?.email || '';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [demoRole, setDemoRole] = useState<Role>(initialRole);
 
@@ -288,7 +300,7 @@ export function AdminShell({ children, initialRole = 'admin' }: AdminShellProps)
           {/* Right Header Actions */}
           <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
             {/* Role Badge */}
-            <RoleBadge role={demoRole} />
+            <RoleBadge role={IS_ADMIN_MOCK ? demoRole : activeRole} />
 
             {/* Theme Switcher */}
             <AdminThemeToggle />
@@ -305,7 +317,7 @@ export function AdminShell({ children, initialRole = 'admin' }: AdminShellProps)
                     <User className="h-3.5 w-3.5" />
                   </div>
                   <span className="hidden md:inline font-medium">
-                    {user?.name || (demoRole === 'admin' ? 'Ayesha Khan' : 'Bilal Ahmed')}
+                    {activeName}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
@@ -313,10 +325,10 @@ export function AdminShell({ children, initialRole = 'admin' }: AdminShellProps)
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-semibold leading-none">
-                      {user?.name || (demoRole === 'admin' ? 'Ayesha Khan' : 'Bilal Ahmed')}
+                      {activeName}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email || (demoRole === 'admin' ? 'ayesha.khan@chemistryplayground.org' : 'bilal.ahmed@chemistryplayground.org')}
+                      {activeEmail}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -329,7 +341,7 @@ export function AdminShell({ children, initialRole = 'admin' }: AdminShellProps)
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={logout}
+                  onClick={async () => { await logout(); window.location.href = '/auth?portal=admin'; }}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />

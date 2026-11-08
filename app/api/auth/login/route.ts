@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { User, ensureDbSynced } from "@/lib/db";
-import { verifyPassword, signToken, STUDENT_SESSION_COOKIE, ADMIN_SESSION_COOKIE } from "@/lib/auth";
+import { verifyPassword, signToken, STUDENT_SESSION_COOKIE, ADMIN_SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/auth";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
@@ -19,6 +19,14 @@ export async function POST(request: Request) {
     const user = await User.findOne({ where: { email: normalizedEmail } });
     if (!user) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+    }
+
+    // Check suspension
+    if (user.status === "suspended") {
+      return NextResponse.json(
+        { error: "Account suspended. Please contact administrator." },
+        { status: 403 }
+      );
     }
 
     // Verify password
@@ -46,24 +54,32 @@ export async function POST(request: Request) {
       cookieStore.set(ADMIN_SESSION_COOKIE, token, {
         httpOnly: true,
         secure: isProd,
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 86400,
         path: "/",
       });
+      // Clear student cookies so they don't conflict
+      cookieStore.delete(STUDENT_SESSION_COOKIE);
+      cookieStore.delete(LEGACY_SESSION_COOKIE);
     } else {
       cookieStore.set(STUDENT_SESSION_COOKIE, token, {
         httpOnly: true,
         secure: isProd,
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 86400,
         path: "/",
       });
+      // Clear admin cookie
+      cookieStore.delete(ADMIN_SESSION_COOKIE);
     }
 
     return NextResponse.json({
       id: user.id,
       email: user.email,
       name: user.name,
+      institution: user.institution || "",
+      role: user.role || "student",
+      status: user.status || "active",
     });
   } catch (error: any) {
     console.error("Login API error:", error);

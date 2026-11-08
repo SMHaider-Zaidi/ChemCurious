@@ -1,3 +1,4 @@
+import { safeIsoDate } from "@/lib/api-utils";
 import { NextResponse } from "next/server";
 import { withAdmin } from "@/lib/admin-guard";
 import { User, QuizAttempt, AuditLog, isStudentRankVisible, setSystemSetting, sequelize } from "@/lib/db";
@@ -73,8 +74,8 @@ async function handleGet(req: Request) {
     institution: u.institution,
     role: u.role,
     status: u.status,
-    createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-    lastLoginAt: u.lastLoginAt ? new Date(u.lastLoginAt).toISOString() : null,
+    createdAt: safeIsoDate(u.createdAt, new Date().toISOString())!,
+    lastLoginAt: safeIsoDate(u.lastLoginAt, null),
     attemptCount: attemptCountMap.get(u.id) || 0,
   }));
 

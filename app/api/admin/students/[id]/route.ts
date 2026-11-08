@@ -1,3 +1,4 @@
+import { safeIsoDate } from "@/lib/api-utils";
 import { NextResponse } from "next/server";
 import { withAdmin } from "@/lib/admin-guard";
 import { User, QuizAttempt, QuizAttemptAnswer, Question, Chapter } from "@/lib/db";
@@ -41,7 +42,7 @@ async function handleGet(req: Request, user: any, { params }: { params: Promise<
         attempts: 0,
         best: 0,
         totalPct: 0,
-        last: att.createdAt ? new Date(att.createdAt).toISOString() : new Date().toISOString(),
+        last: safeIsoDate(att.createdAt, new Date().toISOString())!,
       };
       existing.attempts += 1;
       existing.best = Math.max(existing.best, numPercentage);
@@ -62,7 +63,7 @@ async function handleGet(req: Request, user: any, { params }: { params: Promise<
       totalQuestions: Number(att.totalQuestions || 0),
       percentage: numPercentage,
       timeSpentSeconds: att.timeSpentSeconds || null,
-      completedAt: att.createdAt ? new Date(att.createdAt).toISOString() : new Date().toISOString(),
+      completedAt: safeIsoDate(att.createdAt, new Date().toISOString())!,
       hasAnswerDetail: Boolean(att.answersDetail),
     };
   });
@@ -186,8 +187,8 @@ async function handleGet(req: Request, user: any, { params }: { params: Promise<
       email: student.email,
       institution: student.institution,
       status: student.status,
-      createdAt: student.createdAt ? new Date(student.createdAt).toISOString() : new Date().toISOString(),
-      lastLoginAt: student.lastLoginAt ? new Date(student.lastLoginAt).toISOString() : null,
+      createdAt: safeIsoDate(student.createdAt, new Date().toISOString())!,
+      lastLoginAt: safeIsoDate(student.lastLoginAt, null),
     },
     totals: {
       attempts: attempts.length,

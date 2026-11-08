@@ -62,8 +62,8 @@ function logAudit(
 ) {
   const currentActor =
     currentDemoRole === 'admin'
-      ? { id: 1, name: 'Ayesha Khan', email: 'ayesha.khan@chemistryplayground.org' }
-      : { id: 2, name: 'Bilal Ahmed', email: 'bilal.ahmed@chemistryplayground.org' };
+      ? { id: 1, name: 'System Admin', email: 'admin@chemcurious.org' }
+      : { id: 2, name: 'Staff Member', email: 'staff@chemcurious.org' };
 
   auditLogs.unshift({
     id: nextId(auditLogs),
@@ -1254,6 +1254,12 @@ export const demoAdapter = {
   },
 
   // --- USERS ---
+  async getSettings(): Promise<{ showStudentRank: boolean }> {
+    return { showStudentRank: true };
+  },
+  async updateSettings(s: { showStudentRank: boolean }): Promise<{ showStudentRank: boolean }> {
+    return s;
+  },
   async getUsers(filters?: {
     role?: Role;
     status?: string;
@@ -1464,7 +1470,7 @@ export const demoAdapter = {
     const recentActivity =
       currentDemoRole === 'admin'
         ? auditLogs.slice(0, 10)
-        : auditLogs.filter((a) => a.actor.email === 'bilal.ahmed@chemistryplayground.org').slice(0, 10);
+        : auditLogs.filter((a) => a.actor.email === 'staff@chemcurious.org').slice(0, 10);
 
     return delay({
       counts,

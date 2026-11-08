@@ -38,6 +38,7 @@ const CONTRACT_ROUTES: { file: string; methods: string[] }[] = [
   { file: "app/api/admin/leaderboard/route.ts",                          methods: ["GET"] },
   { file: "app/api/admin/analytics/quizzes/route.ts",                    methods: ["GET"] },
   { file: "app/api/admin/users/route.ts",                                methods: ["GET", "PATCH"] },
+  { file: "app/api/admin/users/settings/route.ts",                       methods: ["GET", "PUT"] },
   { file: "app/api/admin/users/[id]/role/route.ts",                      methods: ["PATCH"] },
   { file: "app/api/admin/users/[id]/status/route.ts",                    methods: ["PATCH"] },
   { file: "app/api/admin/audit-logs/route.ts",                           methods: ["GET"] },

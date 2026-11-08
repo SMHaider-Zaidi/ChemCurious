@@ -1,5 +1,5 @@
 // Simple audit logger for admin actions
-import type { CurrentUser } from "@/lib/admin/types";
+import { AuditLog, ensureDbSynced } from "@/lib/db";
 
 export type AuditOutcome = "SUCCESS" | "FAILURE";
 
@@ -12,20 +12,30 @@ export interface AuditLogPayload {
 }
 
 /**
- * Persist audit log. Replace console.log with real DB persistence as needed.
+ * Persist audit log to MySQL audit_logs table.
  */
 export async function logAudit(payload: AuditLogPayload): Promise<void> {
   try {
-    const entry = {
-      timestamp: new Date().toISOString(),
-      ...payload,
-    };
-    // Placeholder: write to console in dev, replace with DB insert.
     if (process.env.NODE_ENV !== "production") {
-      console.log("[AUDIT]", JSON.stringify(entry));
+      console.log("[AUDIT]", JSON.stringify({ timestamp: new Date().toISOString(), ...payload }));
     }
-    // TODO: integrate with actual audit table via ORM.
+
+    await ensureDbSynced();
+
+    await AuditLog.create({
+      userId: typeof payload.actor?.id === "number" ? payload.actor.id : Number(payload.actor?.id) || null,
+      userEmail: payload.actor?.email || "system@chemcurious.com",
+      action: payload.action,
+      entityType: payload.metadata?.entityType || "system",
+      entityId: String(payload.metadata?.entityId || "0"),
+      beforeState: payload.metadata?.beforeState || null,
+      afterState:
+        payload.outcome === "FAILURE"
+          ? { status: "FAILED", reason: payload.failureReason }
+          : payload.metadata?.afterState || payload.metadata || null,
+      ipAddress: payload.metadata?.ipAddress || null,
+    });
   } catch (e) {
-    console.error("Failed to log audit", e);
+    console.error("Failed to persist audit log:", e);
   }
 }

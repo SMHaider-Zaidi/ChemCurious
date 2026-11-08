@@ -6,7 +6,7 @@ import { Question, Chapter } from "@/lib/db";
 import { questionInputSchema } from "@/lib/admin/schemas/question";
 import { sanitizeRich } from "@/lib/admin/sanitizeRich";
 import { htmlToPlainText } from "@/lib/admin/chemFormat";
-import { validateBody, parsePagination } from "@/lib/api-utils";
+import { validateBody, parsePagination, safeIsoDate } from "@/lib/api-utils";
 import type { Question as ClientQuestion } from "@/lib/admin/types";
 import { Op } from "sequelize";
 
@@ -35,8 +35,8 @@ function mapQuestionToClient(
     marks: q.marks ?? 1,
     status: q.status || "draft",
     questionImageUrl: q.imageUrl || null,
-    createdAt: q.createdAt ? new Date(q.createdAt).toISOString() : new Date().toISOString(),
-    updatedAt: q.updatedAt ? new Date(q.updatedAt).toISOString() : null,
+    createdAt: safeIsoDate(q.createdAt ?? q.created_at, new Date().toISOString())!,
+    updatedAt: safeIsoDate(q.updatedAt ?? q.updated_at, null),
   };
 }
 

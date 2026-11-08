@@ -35,7 +35,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <AdminQueryProvider>
-      <AdminShell initialRole={access.role}>{children}</AdminShell>
+      <AdminShell
+        initialRole={access.role}
+        initialName={access.userName}
+        initialEmail={access.userEmail}
+      >
+        {children}
+      </AdminShell>
     </AdminQueryProvider>
   );
 }

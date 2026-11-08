@@ -8,6 +8,8 @@ interface User {
   email: string
   name: string
   institution: string
+  role?: string
+  status?: string
   createdAt?: string
 }
 
@@ -52,16 +54,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session via HTTP cookie + tab-level sessionStorage
+    // Check for existing session via HTTP cookie + current URL pathname
     const checkSession = async () => {
       try {
         const portal = getSessionPortal()
+        const isAdminPath = typeof window !== "undefined" && window.location.pathname.startsWith("/admin")
 
-        if (portal === "admin") {
-          // This tab was explicitly authenticated or active as Admin
-          const response = await fetch("/api/admin/me")
-          if (response.ok) {
-            const data = await response.json()
+        if (portal === "admin" || isAdminPath) {
+          // Check Admin session endpoint
+          try {
+            const adminRes = await fetch("/api/admin/me")
+            if (adminRes.ok) {
+              const data = await adminRes.json()
+              if (data && (data.role === "admin" || data.role === "staff")) {
+                setUser({
+                  id: String(data.id),
+                  email: data.email,
+                  name: data.name,
+                  institution: data.institution || "",
+                  role: data.role,
+                  status: data.status,
+                })
+                setSessionPortal("admin")
+                setIsLoading(false)
+                return
+              }
+            }
+          } catch {}
+        }
+
+        // Student session check
+        try {
+          const studentRes = await fetch("/api/auth/me")
+          if (studentRes.ok) {
+            const data = await studentRes.json()
+            if (data.user && data.user.role === "student") {
+              setUser(data.user)
+              setSessionPortal("student")
+              setIsLoading(false)
+              return
+            }
+          }
+        } catch {}
+
+        // Fallback: Check admin session if not on admin path
+        try {
+          const fallbackAdmin = await fetch("/api/admin/me")
+          if (fallbackAdmin.ok) {
+            const data = await fallbackAdmin.json()
             if (data && (data.role === "admin" || data.role === "staff")) {
               setUser({
                 id: String(data.id),
@@ -71,33 +111,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 role: data.role,
                 status: data.status,
               })
+              setSessionPortal("admin")
               setIsLoading(false)
               return
             }
           }
-          removeSessionPortal()
-        }
+        } catch {}
 
-        // Student session check
-        const response = await fetch("/api/auth/me")
-        if (response.ok) {
-          const data = await response.json()
-          if (data.user && data.user.role === "student") {
-            // Only adopt student session if this tab isn't tagged as an active admin session
-            if (portal !== "admin") {
-              setUser(data.user)
-              if (!getSessionPortal()) {
-                setSessionPortal("student")
-              }
-            } else {
-              setUser(null)
-            }
-          } else {
-            setUser(null)
-          }
-        } else {
-          setUser(null)
-        }
+        // No active session found
+        removeSessionPortal()
+        setUser(null)
       } catch (err) {
         console.error("Session verification failed:", err)
         setUser(null)
@@ -105,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false)
       }
     }
+
     checkSession()
   }, [])
 
@@ -149,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(false)
-    return false
+    return null
   }
 
   const signup = async (
@@ -188,15 +212,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setIsLoading(true)
-    const activePortal = getSessionPortal()
-    const isCurrentAdmin = activePortal === "admin" || user?.role === "admin" || user?.role === "staff"
 
     try {
-      if (isCurrentAdmin) {
-        await fetch("/api/auth/admin-logout", { method: "POST" })
-      } else {
-        await fetch("/api/auth/logout", { method: "POST" })
-      }
+      // Clear all potential sessions
+      await Promise.allSettled([
+        fetch("/api/auth/admin-logout", { method: "POST" }),
+        fetch("/api/auth/logout", { method: "POST" }),
+      ])
     } catch (err) {
       console.error("Logout request failed:", err)
     }

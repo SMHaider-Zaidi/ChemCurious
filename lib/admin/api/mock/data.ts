@@ -620,8 +620,8 @@ export const initialReactions: Reaction[] = [
 export const initialUsers: AdminUser[] = [
   {
     id: 1,
-    name: 'Ayesha Khan',
-    email: 'ayesha.khan@chemistryplayground.org',
+    name: 'System Admin',
+    email: 'admin@chemcurious.org',
     institution: 'Department of Chemical Sciences',
     role: 'admin',
     status: 'active',
@@ -631,8 +631,8 @@ export const initialUsers: AdminUser[] = [
   },
   {
     id: 2,
-    name: 'Bilal Ahmed',
-    email: 'bilal.ahmed@chemistryplayground.org',
+    name: 'Staff Member',
+    email: 'staff@chemcurious.org',
     institution: 'Faculty of Natural Sciences',
     role: 'staff',
     status: 'active',
@@ -899,7 +899,7 @@ export const initialAuditLogs: AuditLogEntry[] = [
   {
     id: 1,
     action: 'publish_chapter',
-    actor: { id: 1, name: 'Ayesha Khan', email: 'ayesha.khan@chemistryplayground.org' },
+    actor: { id: 1, name: 'System Admin', email: 'admin@chemcurious.org' },
     entityType: 'chapter',
     entityId: '5',
     timestamp: stamp(0, 2),
@@ -910,7 +910,7 @@ export const initialAuditLogs: AuditLogEntry[] = [
   {
     id: 2,
     action: 'create_question',
-    actor: { id: 2, name: 'Bilal Ahmed', email: 'bilal.ahmed@chemistryplayground.org' },
+    actor: { id: 2, name: 'Staff Member', email: 'staff@chemcurious.org' },
     entityType: 'question',
     entityId: '9',
     timestamp: stamp(0, 5),
@@ -921,7 +921,7 @@ export const initialAuditLogs: AuditLogEntry[] = [
   {
     id: 3,
     action: 'update_molecule',
-    actor: { id: 1, name: 'Ayesha Khan', email: 'ayesha.khan@chemistryplayground.org' },
+    actor: { id: 1, name: 'System Admin', email: 'admin@chemcurious.org' },
     entityType: 'molecule',
     entityId: '1',
     timestamp: stamp(1, 3),
@@ -932,7 +932,7 @@ export const initialAuditLogs: AuditLogEntry[] = [
   {
     id: 4,
     action: 'create_reaction',
-    actor: { id: 2, name: 'Bilal Ahmed', email: 'bilal.ahmed@chemistryplayground.org' },
+    actor: { id: 2, name: 'Staff Member', email: 'staff@chemcurious.org' },
     entityType: 'reaction',
     entityId: '2',
     timestamp: stamp(2, 6),
@@ -943,7 +943,7 @@ export const initialAuditLogs: AuditLogEntry[] = [
   {
     id: 5,
     action: 'suspend_user',
-    actor: { id: 1, name: 'Ayesha Khan', email: 'ayesha.khan@chemistryplayground.org' },
+    actor: { id: 1, name: 'System Admin', email: 'admin@chemcurious.org' },
     entityType: 'user',
     entityId: '13',
     timestamp: stamp(5, 12),

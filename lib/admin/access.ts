@@ -1,5 +1,4 @@
 import { getCurrentUser } from '@/lib/admin-auth';
-import { IS_ADMIN_MOCK } from './api/client';
 import type { Role } from './types';
 
 export interface AdminAccessResult {
@@ -7,12 +6,13 @@ export interface AdminAccessResult {
   role: Role;
   userId?: number;
   userName?: string;
+  userEmail?: string;
   reason?: 'not_logged_in' | 'insufficient_role' | 'suspended';
 }
 
 /**
  * Server-side guard function to verify administrative permissions.
- * In Phase 2, queries the active session and fresh MySQL user record on every call.
+ * Queries the active session and fresh MySQL user record on every call.
  */
 export async function getAdminAccess(): Promise<AdminAccessResult> {
   const { user, error } = await getCurrentUser();
@@ -31,27 +31,19 @@ export async function getAdminAccess(): Promise<AdminAccessResult> {
       role: user.role,
       userId: user.id,
       userName: user.name,
+      userEmail: user.email,
       reason: 'suspended',
     };
   }
 
-  // When demo mock mode is enabled on the client side, provide access for evaluation
-  if (IS_ADMIN_MOCK) {
-    return {
-      hasAccess: true,
-      role: user.role === 'student' ? 'admin' : user.role,
-      userId: user.id,
-      userName: user.name,
-    };
-  }
-
-  // Real backend role check
-  if (user.role === 'student') {
+  // Strict role check: Only admin and staff have administrative access
+  if (user.role !== 'admin' && user.role !== 'staff') {
     return {
       hasAccess: false,
       role: 'student',
       userId: user.id,
       userName: user.name,
+      userEmail: user.email,
       reason: 'insufficient_role',
     };
   }
@@ -61,5 +53,6 @@ export async function getAdminAccess(): Promise<AdminAccessResult> {
     role: user.role,
     userId: user.id,
     userName: user.name,
+    userEmail: user.email,
   };
 }

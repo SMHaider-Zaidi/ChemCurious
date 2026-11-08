@@ -2,7 +2,7 @@ import { withAdminTx } from "@/lib/admin/withAdminTx";
 import { NextResponse } from "next/server";
 import { Question, Chapter } from "@/lib/db";
 import { z } from "zod";
-import { validateBody } from "@/lib/api-utils";
+import { validateBody, safeIsoDate } from "@/lib/api-utils";
 import { htmlToPlainText } from "@/lib/admin/chemFormat";
 
 // PATCH /api/admin/quizzes/questions/:id/status
@@ -51,7 +51,7 @@ async function handlePatch(req: Request, user: any, ctx: any) {
     marks: question.marks ?? 1,
     status: question.status,
     questionImageUrl: question.imageUrl || null,
-    createdAt: question.createdAt ? new Date(question.createdAt).toISOString() : new Date().toISOString(),
+    createdAt: safeIsoDate((question as any).createdAt ?? (question as any).created_at, new Date().toISOString())!,
   });
 }
 

@@ -22,6 +22,17 @@ export const usersApi = {
     });
   },
 
+  getSettings: async (): Promise<{ showStudentRank: boolean }> => {
+    if (IS_ADMIN_MOCK) return demoAdapter.getSettings();
+    return adminFetch<{ showStudentRank: boolean }>("/api/admin/users/settings");
+  },
+  updateSettings: async (settings: { showStudentRank: boolean }): Promise<{ showStudentRank: boolean }> => {
+    if (IS_ADMIN_MOCK) return demoAdapter.updateSettings(settings);
+    return adminFetch<{ showStudentRank: boolean }>("/api/admin/users/settings", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
+  },
   setUserStatus: async (id: number, status: AccountStatus): Promise<AdminUser> => {
     if (IS_ADMIN_MOCK) return demoAdapter.setUserStatus(id, status);
     return adminFetch<AdminUser>(`/api/admin/users/${id}/status`, {

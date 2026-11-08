@@ -25,7 +25,7 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 200 });
     }
 
-    // Safely extract properties to avoid undefined errors
+    // Safely extract properties
     const userId = dbUser.get("id");
     const userEmail = dbUser.get("email");
     const userName = dbUser.get("name");
@@ -41,8 +41,11 @@ export async function GET() {
         id: userId ? userId.toString() : "",
         email: userEmail || "",
         name: userName || "",
+        institution: (dbUser as any).institution || "",
+        role: "student",
+        status: (dbUser as any).status || "active",
         createdAt: userCreatedAt ? new Date(userCreatedAt).toISOString() : new Date().toISOString(),
-      }
+      },
     });
   } catch (error: any) {
     console.error("Me API error:", error);

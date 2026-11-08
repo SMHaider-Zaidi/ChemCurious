@@ -16,6 +16,7 @@ import {
   AlignRight,
   Bold,
   Eraser,
+  FlaskConical,
   Heading2,
   Heading3,
   ImagePlus,
@@ -299,6 +300,136 @@ export function FormulaHelperBar({ editor }: { editor: Editor | null }) {
   );
 }
 
+
+function EquationDialogModal({
+  open,
+  onOpenChange,
+  onInsert,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onInsert: (html: string) => void;
+}) {
+  const [shorthand, setShorthand] = useState('');
+  const previewHtml = shorthand ? formatChemText(shorthand) : '';
+
+  const QUICK_CHIPS = [
+    { label: 'H₂SO₄', val: 'H2SO4' },
+    { label: 'H₂O', val: 'H2O' },
+    { label: 'CO₂', val: 'CO2' },
+    { label: 'Ca(OH)₂', val: 'Ca(OH)2' },
+    { label: 'HCl', val: 'HCl' },
+    { label: 'NaCl', val: 'NaCl' },
+    { label: 'NaOH', val: 'NaOH' },
+    { label: 'NH₃', val: 'NH3' },
+    { label: '→', val: ' -> ' },
+    { label: '⇌', val: ' <=> ' },
+    { label: '⁺', val: '+' },
+    { label: '⁻', val: '-' },
+    { label: '²⁺', val: '2+' },
+    { label: '³⁺', val: '3+' },
+    { label: '²⁻', val: '2-' },
+    { label: '(aq)', val: '(aq)' },
+    { label: '(s)', val: '(s)' },
+    { label: '(g)', val: '(g)' },
+    { label: 'Δ', val: ' Δ ' },
+  ];
+
+  const handleInsert = () => {
+    if (!previewHtml) return;
+    onInsert(previewHtml);
+    onOpenChange(false);
+    setShorthand('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-lg flex items-center gap-2 text-primary">
+            <FlaskConical className="h-5 w-5 text-primary" />
+            Insert Chemical Formula or Equation
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">
+              Type Chemical Shorthand:
+            </Label>
+            <Input
+              value={shorthand}
+              onChange={(e) => setShorthand(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleInsert();
+                }
+              }}
+              placeholder="e.g. H2SO4 or 2H2 + O2 -> 2H2O or Fe3+"
+              className="font-mono text-sm"
+              autoFocus
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Numbers after elements auto-subscript (H2SO4 → H₂SO₄). Use <code>-&gt;</code> for → or <code>&lt;=&gt;</code> for ⇌.
+            </p>
+          </div>
+
+          {/* Live Preview */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
+              Live Preview
+            </div>
+            <div className="min-h-[28px] flex items-center text-sm font-serif text-foreground">
+              {previewHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewHtml) }} />
+              ) : (
+                <span className="text-muted-foreground text-xs italic">
+                  Preview will appear here (e.g. H₂SO₄)...
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Insert Chips */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-muted-foreground">
+              Quick Symbol / Compound Chips:
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_CHIPS.map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setShorthand((prev) => prev + chip.val)}
+                  className="rounded border border-border bg-background px-2 py-0.5 text-xs font-medium hover:bg-muted hover:border-primary/50 transition-colors"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!previewHtml}
+            onClick={handleInsert}
+            className="font-semibold"
+          >
+            Insert into Text
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ChemRichEditor({
   value,
   onChange,
@@ -310,6 +441,7 @@ export function ChemRichEditor({
   className,
 }: ChemRichEditorProps) {
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [equationModalOpen, setEquationModalOpen] = useState(false);
   const isUpdatingFromProp = useRef(false);
 
   const editor = useEditor({
@@ -564,6 +696,15 @@ export function ChemRichEditor({
           <FormulaHelperBar editor={editor} />
         </div>
       )}
+
+      {/* Chemical Equation Helper Dialog */}
+      <EquationDialogModal
+        open={equationModalOpen}
+        onOpenChange={setEquationModalOpen}
+        onInsert={(html) => {
+          editor.chain().focus().insertContent(html).run();
+        }}
+      />
 
       {/* Image Upload Dialog */}
       <ImageUploadModal

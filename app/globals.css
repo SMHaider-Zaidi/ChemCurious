@@ -126,3 +126,59 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* =========================================================
+   CHEMISTRY TYPOGRAPHY & TIPTAP RICH EDITOR STYLES
+   ========================================================= */
+sub,
+.ProseMirror sub {
+  font-size: 0.72em !important;
+  line-height: 0 !important;
+  position: relative !important;
+  vertical-align: baseline !important;
+  bottom: -0.28em !important;
+  font-weight: inherit !important;
+}
+
+sup,
+.ProseMirror sup {
+  font-size: 0.72em !important;
+  line-height: 0 !important;
+  position: relative !important;
+  vertical-align: baseline !important;
+  top: -0.45em !important;
+  font-weight: inherit !important;
+}
+
+.ProseMirror {
+  outline: none !important;
+  min-height: inherit;
+}
+
+.ProseMirror p {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   SKELETON LOADING BARS - CLEAN PROFESSIONAL NEUTRAL SLATE
+   ========================================================= */
+[data-slot="skeleton"],
+.skeleton {
+  background-color: #e2e8f0 !important; /* Neutral clean slate gray */
+}
+
+.dark [data-slot="skeleton"],
+.dark .skeleton {
+  background-color: #1e293b !important; /* Neutral dark slate gray */
+}

@@ -1,3 +1,4 @@
+import { safeIsoDate } from "@/lib/api-utils";
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/admin-guard';
 import { withAdminTx } from '@/lib/admin/withAdminTx';
@@ -97,8 +98,8 @@ async function handleGet(req: Request) {
       status: r.status,
       reactantCount: enrichedReactants.length,
       productCount: enrichedProducts.length,
-      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
-      updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : new Date().toISOString(),
+      createdAt: safeIsoDate(r.createdAt, new Date().toISOString())!,
+      updatedAt: safeIsoDate(r.updatedAt, new Date().toISOString())!,
     };
   });
 
@@ -186,8 +187,8 @@ async function handlePost(req: Request, user: any, { tx }: { tx: any }) {
       status: created.status,
       reactantCount: enrichedReactants.length,
       productCount: enrichedProducts.length,
-      createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : new Date().toISOString(),
-      updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : new Date().toISOString(),
+      createdAt: safeIsoDate(created.createdAt, new Date().toISOString())!,
+      updatedAt: safeIsoDate(created.updatedAt, new Date().toISOString())!,
     },
     { status: 201 }
   );

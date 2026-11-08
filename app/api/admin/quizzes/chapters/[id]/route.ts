@@ -1,3 +1,4 @@
+import { safeIsoDate } from "@/lib/api-utils";
 // Admin API: Chapter detail CRUD
 // Path: /api/admin/quizzes/chapters/[id]
 import { NextResponse } from "next/server";
@@ -33,11 +34,11 @@ async function handleGet(req: Request, user: any, context: any) {
     order: chapter.chapterNumber,
     title: chapter.chapterTitle,
     status: chapter.status,
-    publishedAt: chapter.publishedAt ? new Date(chapter.publishedAt).toISOString() : null,
+    publishedAt: safeIsoDate(chapter.publishedAt, null),
     questionCount: totalQuestions,
     publishedQuestionCount: publishedQuestions,
-    createdAt: chapter.createdAt ? new Date(chapter.createdAt).toISOString() : new Date().toISOString(),
-    updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).toISOString() : new Date().toISOString(),
+    createdAt: safeIsoDate(chapter.createdAt, new Date().toISOString())!,
+    updatedAt: safeIsoDate(chapter.updatedAt, new Date().toISOString())!,
   });
 }
 
@@ -76,11 +77,11 @@ async function handlePut(req: Request, user: any, context: any) {
     order: chapter.chapterNumber,
     title: chapter.chapterTitle,
     status: chapter.status,
-    publishedAt: chapter.publishedAt ? new Date(chapter.publishedAt).toISOString() : null,
+    publishedAt: safeIsoDate(chapter.publishedAt, null),
     questionCount: totalQuestions,
     publishedQuestionCount: publishedQuestions,
-    createdAt: chapter.createdAt ? new Date(chapter.createdAt).toISOString() : new Date().toISOString(),
-    updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).toISOString() : new Date().toISOString(),
+    createdAt: safeIsoDate(chapter.createdAt, new Date().toISOString())!,
+    updatedAt: safeIsoDate(chapter.updatedAt, new Date().toISOString())!,
   });
 }
 

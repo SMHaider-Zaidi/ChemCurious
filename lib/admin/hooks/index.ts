@@ -522,3 +522,35 @@ export function useAuditLogs(filters?: {
     staleTime: 15 * 1000,
   });
 }
+
+export function useSystemSettings() {
+  return useQuery({
+    queryKey: ["admin", "settings"],
+    queryFn: () => usersApi.getSettings(),
+  });
+}
+
+export function useUpdateSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: { showStudentRank: boolean }) => usersApi.updateSettings(settings),
+    onMutate: async (newSettings) => {
+      await queryClient.cancelQueries({ queryKey: ["admin", "settings"] });
+      const previousSettings = queryClient.getQueryData<{ showStudentRank: boolean }>(["admin", "settings"]);
+      queryClient.setQueryData(["admin", "settings"], newSettings);
+      return { previousSettings };
+    },
+    onError: (err: any, _newSettings, context) => {
+      if (context?.previousSettings) {
+        queryClient.setQueryData(["admin", "settings"], context.previousSettings);
+      }
+      toast.error(err.message || "Failed to update settings");
+    },
+    onSuccess: () => {
+      toast.success("Setting updated successfully");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
+    },
+  });
+}

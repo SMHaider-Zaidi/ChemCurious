@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { User, ensureDbSynced } from "@/lib/db";
-import { verifyPassword, signToken, ADMIN_SESSION_COOKIE, STUDENT_SESSION_COOKIE } from "@/lib/auth";
+import { verifyPassword, signToken, ADMIN_SESSION_COOKIE, STUDENT_SESSION_COOKIE, LEGACY_SESSION_COOKIE } from "@/lib/auth";
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/audit";
 import { cookies } from "next/headers";
@@ -42,6 +42,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Strict role check: Only admin and staff are allowed to sign in here
+    if (user.role !== "admin" && user.role !== "staff") {
+      return NextResponse.json(
+        { error: "Access denied. Student accounts must sign in using the Student portal." },
+        { status: 403 }
+      );
+    }
+
     // Verify password
     const isPasswordValid = verifyPassword(password, user.passwordHash);
     if (!isPasswordValid) {
@@ -65,30 +73,24 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const isProd = process.env.NODE_ENV === "production";
 
-    // Set appropriate isolated session cookie
-    if (user.role === "admin" || user.role === "staff") {
-      cookieStore.set(ADMIN_SESSION_COOKIE, token, {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: "strict",
-        maxAge: 86400,
-        path: "/",
-      });
-    } else {
-      cookieStore.set(STUDENT_SESSION_COOKIE, token, {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: "strict",
-        maxAge: 86400,
-        path: "/",
-      });
-    }
+    // Set isolated admin session cookie
+    cookieStore.set(ADMIN_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+    });
+
+    // Clear any leftover student cookies
+    cookieStore.delete(STUDENT_SESSION_COOKIE);
+    cookieStore.delete(LEGACY_SESSION_COOKIE);
 
     return NextResponse.json({
       id: user.id,
       email: user.email,
       name: user.name,
-      institution: user.institution,
+      institution: user.institution || "",
       role: user.role,
       status: user.status,
     });
