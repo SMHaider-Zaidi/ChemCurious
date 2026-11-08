@@ -23,11 +23,9 @@ export async function GET(request: Request) {
         raw: true,
       });
 
-      // Map DB schema to match UI expectations
+      // Map DB schema to match UI expectations.
+      // Never expose the answer key or explanation here; grading happens server-side.
       const formattedQuestions = questions.map((q: any) => {
-        const correctLetter = String(q.correctOption || q.correct_option || 'A').toUpperCase();
-        const correctIdx = ['A', 'B', 'C', 'D'].indexOf(correctLetter);
-
         return {
           id: String(q.id),
           type: 'multiple-choice' as const,
@@ -38,8 +36,6 @@ export async function GET(request: Request) {
             q.optionC || q.option_c || '',
             q.optionD || q.option_d || '',
           ],
-          correctAnswer: correctIdx !== -1 ? correctIdx : 0,
-          explanation: q.explanation || '',
           difficulty: q.difficulty || 'medium',
           topic: q.topic || 'General',
         };

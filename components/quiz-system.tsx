@@ -10,17 +10,20 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle, XCircle, RotateCcw, Trophy, Target, Lock, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/contexts/auth-context"
 
 interface Question {
   id: string
   type: "multiple-choice"
   question: string
   options: string[]
-  correctAnswer: number
-  explanation: string
   difficulty: "easy" | "medium" | "hard"
   topic: string
+}
+
+interface CheckResult {
+  isCorrect: boolean
+  correctAnswer: number
+  explanation: string
 }
 
 interface Chapter {
@@ -36,14 +39,12 @@ function QuestionCard({
   question,
   selectedAnswer,
   onAnswerSelect,
-  showResult,
-  isCorrect,
+  result,
 }: {
   question: Question
   selectedAnswer: number | null
   onAnswerSelect: (answer: number) => void
-  showResult: boolean
-  isCorrect: boolean | null
+  result: CheckResult | null
 }) {
   return (
     <Card>
@@ -66,7 +67,7 @@ function QuestionCard({
         <RadioGroup
           value={selectedAnswer !== null && selectedAnswer !== undefined ? selectedAnswer.toString() : ""}
           onValueChange={(val) => onAnswerSelect(Number(val))}
-          disabled={showResult}
+          disabled={!!result}
         >
           {question.options.map((option, index) => (
             <div key={index} className="flex items-center space-x-2">
@@ -74,9 +75,9 @@ function QuestionCard({
               <Label
                 htmlFor={`option-${index}`}
                 className={`flex-1 cursor-pointer p-2 rounded transition-colors ${
-                  showResult && index === question.correctAnswer
+                  result && index === result.correctAnswer
                     ? "bg-green-100 text-green-800 border border-green-300 dark:bg-green-950 dark:text-green-200"
-                    : showResult && index === selectedAnswer && index !== question.correctAnswer
+                    : result && index === selectedAnswer && index !== result.correctAnswer
                       ? "bg-red-100 text-red-800 border border-red-300 dark:bg-red-950 dark:text-red-200"
                       : ""
                 }`}
@@ -86,17 +87,17 @@ function QuestionCard({
           ))}
         </RadioGroup>
 
-        {showResult && (
+        {result && (
           <div className="mt-4 p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              {isCorrect ? (
+              {result.isCorrect ? (
                 <CheckCircle className="h-5 w-5 text-green-600" />
               ) : (
                 <XCircle className="h-5 w-5 text-red-600" />
               )}
-              <span className="font-medium">{isCorrect ? "Correct!" : "Incorrect"}</span>
+              <span className="font-medium">{result.isCorrect ? "Correct!" : "Incorrect"}</span>
             </div>
-            <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: question.explanation }} />
+            <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: result.explanation }} />
           </div>
         )}
       </CardContent>
@@ -106,14 +107,14 @@ function QuestionCard({
 
 function QuizViewer({ chapter, onBack }: { chapter: Chapter; onBack: () => void }) {
   const router = useRouter()
-  const { user } = useAuth()
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<{ [key: string]: number }>({})
-  const [showResults, setShowResults] = useState(false)
+  const [checkResults, setCheckResults] = useState<{ [key: string]: CheckResult }>({})
+  const [checking, setChecking] = useState(false)
   const [quizCompleted, setQuizCompleted] = useState(false)
-  const [score, setScore] = useState(0)
+  const [finalResult, setFinalResult] = useState<{ score: number; totalQuestions: number; percentage: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -150,67 +151,101 @@ function QuizViewer({ chapter, onBack }: { chapter: Chapter; onBack: () => void 
   }
 
   const currentQuestion = questions[currentIndex]
+  const currentResult = checkResults[currentQuestion.id] ?? null
   const progress = ((currentIndex + 1) / questions.length) * 100
 
-  const handleCheckAnswer = () => {
-    if (showResults || answers[currentQuestion.id] === undefined) return
+  const handleCheckAnswer = async () => {
+    const selected = answers[currentQuestion.id]
+    if (currentResult || checking || selected === undefined || selected === null) return
 
-    if (answers[currentQuestion.id] === currentQuestion.correctAnswer) {
-      setScore((currentScore) => currentScore + 1)
+    setChecking(true)
+    setSubmitError(null)
+
+    try {
+      const optionKeys = ["A", "B", "C", "D"]
+      const response = await fetch("/api/quizzes/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: Number(currentQuestion.id),
+          selectedOption: optionKeys[selected],
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to check answer")
+      }
+
+      const data = await response.json()
+      setCheckResults((prev) => ({
+        ...prev,
+        [currentQuestion.id]: {
+          isCorrect: Boolean(data.isCorrect),
+          correctAnswer: Number(data.correctAnswer ?? 0),
+          explanation: String(data.explanation ?? ""),
+        },
+      }))
+    } catch (error) {
+      console.error("Failed to check answer:", error)
+      setSubmitError("Could not check answer. Please try again.")
+    } finally {
+      setChecking(false)
     }
-    setShowResults(true)
   }
 
   const handleNext = async () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1)
-      setShowResults(false)
-    } else {
-      setSubmitting(true)
-      setSubmitError(null)
+      return
+    }
 
-      try {
-        const optionKeys = ["A", "B", "C", "D"];
-        const answerRecords = questions.map((q) => {
-          const selectedIdx = answers[q.id];
-          const hasSelected = selectedIdx !== undefined && selectedIdx !== null;
-          return {
-            questionId: Number(q.id),
-            selectedOption: hasSelected ? (optionKeys[selectedIdx] || null) : null,
-            isCorrect: hasSelected ? selectedIdx === q.correctAnswer : false,
-          };
-        });
+    setSubmitting(true)
+    setSubmitError(null)
 
-        const response = await fetch("/api/quizzes/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user?.id,
-            quizId: chapter.id,
-            chapterId: chapter.id,
-            chapterName: chapter.title,
-            score,
-            totalQuestions: questions.length,
-            answers: answerRecords,
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error("Failed to submit quiz")
+    try {
+      const optionKeys = ["A", "B", "C", "D"]
+      const answerRecords = questions.map((q) => {
+        const selectedIdx = answers[q.id]
+        const hasSelected = selectedIdx !== undefined && selectedIdx !== null
+        return {
+          questionId: Number(q.id),
+          selectedOption: hasSelected ? optionKeys[selectedIdx] ?? null : null,
         }
+      })
 
-        setQuizCompleted(true)
-        router.push("/dashboard")
-      } catch (error) {
-        console.error("Failed to submit quiz:", error)
-        setSubmitError("Quiz submission failed. Please try again.")
-      } finally {
-        setSubmitting(false)
+      const response = await fetch("/api/quizzes/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quizId: chapter.id,
+          chapterId: chapter.id,
+          chapterName: chapter.title,
+          answers: answerRecords,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+      if (!response.ok || !data) {
+        throw new Error("Failed to submit quiz")
       }
+
+      setFinalResult({
+        score: Number(data.score ?? 0),
+        totalQuestions: Number(data.totalQuestions ?? questions.length),
+        percentage: Number(data.percentage ?? 0),
+      })
+      setQuizCompleted(true)
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Failed to submit quiz:", error)
+      setSubmitError("Quiz submission failed. Please try again.")
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const percentage = Math.round((score / questions.length) * 100)
+  const correctCount = finalResult?.score ?? questions.filter((q) => checkResults[q.id]?.isCorrect).length
+  const percentage = finalResult?.percentage ?? Math.round((correctCount / questions.length) * 100)
   const passed = percentage >= 70
 
   if (quizCompleted) {
@@ -226,11 +261,11 @@ function QuizViewer({ chapter, onBack }: { chapter: Chapter; onBack: () => void 
         <CardContent className="space-y-4 text-center">
           <div className="text-3xl font-bold">{percentage}%</div>
           <p className="text-sm text-muted-foreground">
-            {questions.filter((q) => answers[q.id] === q.correctAnswer).length} out of {questions.length} correct
+            {correctCount} out of {finalResult?.totalQuestions ?? questions.length} correct
           </p>
           <div className="flex justify-center gap-4 mt-6">
             <Button onClick={onBack} variant="outline">Back to Quizzes</Button>
-            <Button onClick={() => { setCurrentIndex(0); setAnswers({}); setScore(0); setShowResults(false); setQuizCompleted(false); setSubmitError(null); }}>
+            <Button onClick={() => { setCurrentIndex(0); setAnswers({}); setCheckResults({}); setQuizCompleted(false); setFinalResult(null); setSubmitError(null); }}>
               <RotateCcw className="h-4 w-4 mr-2" /> Retake Quiz
             </Button>
           </div>
@@ -255,22 +290,22 @@ function QuizViewer({ chapter, onBack }: { chapter: Chapter; onBack: () => void 
         question={currentQuestion}
         selectedAnswer={answers[currentQuestion.id] ?? null}
         onAnswerSelect={(ans) => setAnswers({ ...answers, [currentQuestion.id]: ans })}
-        showResult={showResults}
-        isCorrect={showResults && answers[currentQuestion.id] === currentQuestion.correctAnswer}
+        result={currentResult}
       />
 
       <div className="flex justify-end">
         <div className="flex gap-2">
-          {!showResults && (
+          {!currentResult && (
             <Button
               onClick={handleCheckAnswer}
               variant="secondary"
-              disabled={answers[currentQuestion.id] === undefined}
+              disabled={answers[currentQuestion.id] === undefined || checking}
             >
+              {checking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Check Answer
             </Button>
           )}
-          {showResults && (
+          {currentResult && (
             <Button onClick={handleNext} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               {currentIndex === questions.length - 1 ? "Submit Quiz" : "Next"}

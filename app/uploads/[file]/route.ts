@@ -9,7 +9,19 @@ import fs from 'fs/promises';
 async function handleGet(req: Request, ctx: any) {
   const file = ctx.params?.file;
   if (!file) return NextResponse.json({ error: 'Missing file' }, { status: 400 });
-  const filePath = path.join(process.cwd(), 'public', 'uploads', file);
+
+  // Prevent path traversal: only allow a plain filename inside public/uploads.
+  const safeFile = path.basename(String(file));
+  if (!safeFile || safeFile === '.' || safeFile === '..' || safeFile !== String(file)) {
+    return NextResponse.json({ error: 'File not found' }, { status: 404 });
+  }
+
+  const uploadsDir = path.resolve(process.cwd(), 'public', 'uploads');
+  const filePath = path.resolve(uploadsDir, safeFile);
+  if (filePath !== path.join(uploadsDir, safeFile)) {
+    return NextResponse.json({ error: 'File not found' }, { status: 404 });
+  }
+
   try {
     const data = await fs.readFile(filePath);
     const mime = 'application/octet-stream'; // simple fallback; real code could derive from extension
