@@ -7,22 +7,25 @@ import { Sequelize, DataTypes, Model, Optional } from "sequelize";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 // Initialize Sequelize connection using environment variables with connection pooling
+const isSslEnabled = process.env.DB_SSL === "true" || process.env.DB_SSL === "1";
 const sequelize = new Sequelize(
   process.env.DB_NAME || "chemistry_db",
   process.env.DB_USER || "root",
   process.env.DB_PASSWORD || "",
   {
     host: process.env.DB_HOST || "127.0.0.1",
+    port: Number(process.env.DB_PORT || 3306),
     dialect: "mysql",
     logging: false,
     pool: {
-      max: Number(process.env.DB_POOL_MAX ?? 15),
+      max: Number(process.env.DB_POOL_MAX ?? 10),
       min: 0,
       acquire: 30000,
       idle: 10000,
     },
     dialectOptions: {
       charset: "utf8mb4",
+      ...(isSslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
     },
   }
 );
