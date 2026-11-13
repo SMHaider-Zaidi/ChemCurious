@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { QuestionForm } from '@/components/admin/QuestionForm';
 
-export default function NewQuestionPage() {
+function NewQuestionContent() {
   const searchParams = useSearchParams();
   const chapterIdParam = searchParams.get('chapterId');
   const defaultChapterId = chapterIdParam ? Number(chapterIdParam) : undefined;
@@ -20,3 +21,12 @@ export default function NewQuestionPage() {
     </div>
   );
 }
+
+export default function NewQuestionPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading question builder...</div>}>
+      <NewQuestionContent />
+    </Suspense>
+  );
+}
+

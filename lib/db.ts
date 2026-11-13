@@ -1054,6 +1054,5 @@ export async function ensureDbSynced(): Promise<void> {
   return authPromise;
 }
 
-void ensureDbSynced();
-
+// Lazy DB connection: ensureDbSynced() is invoked by API routes upon actual incoming requests
 export { sequelize };
