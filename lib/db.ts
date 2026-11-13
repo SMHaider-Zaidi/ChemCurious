@@ -922,6 +922,17 @@ export async function ensureDbSynced(): Promise<void> {
       .then(async () => {
         // Authenticated successfully
         try {
+          // 1. Ensure all core tables exist in the database
+          await User.sync();
+          await Molecule.sync();
+          await Chapter.sync();
+          await Question.sync();
+          await Reaction.sync();
+          await QuizAttempt.sync();
+          await QuizAttemptAnswer.sync();
+          await AuditLog.sync();
+          await SystemSetting.sync();
+
           // Auto-migrate missing columns if database was restored from an older backup
           const [userCols]: any = await sequelize.query("SHOW COLUMNS FROM `users` LIKE 'role'");
           if (!userCols || userCols.length === 0) {
