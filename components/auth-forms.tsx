@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -18,7 +18,7 @@ interface AuthFormsProps {
   defaultTab?: "login" | "signup"
 }
 
-export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
+function AuthFormsContent({ defaultTab = "login" }: AuthFormsProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectParam = searchParams.get("redirect")
@@ -341,5 +341,13 @@ export function AuthForms({ defaultTab = "login" }: AuthFormsProps) {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export function AuthForms(props: AuthFormsProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Loading...</div>}>
+      <AuthFormsContent {...props} />
+    </Suspense>
   )
 }
