@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import path from "path";
 import { Sequelize, DataTypes, Model, Optional } from "sequelize";
+import mysql2 from "mysql2";
 
 // Load environment variables from .env.local before Sequelize initialization
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -16,6 +17,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || "127.0.0.1",
     port: Number(process.env.DB_PORT || 3306),
     dialect: "mysql",
+    dialectModule: mysql2,
     logging: false,
     pool: {
       max: Number(process.env.DB_POOL_MAX ?? 10),

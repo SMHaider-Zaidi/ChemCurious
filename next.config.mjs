@@ -7,7 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // ⚡ Add this line right here to fix your Sequelize/Turbopack error!
-  serverExternalPackages: ["sequelize"],
+  serverExternalPackages: ["sequelize", "mysql2"],
 };
 
 export default nextConfig;
