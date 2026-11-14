@@ -367,7 +367,7 @@ export function QuizSystem({ initialChapterId }: { initialChapterId?: number } =
       </div>
 
       <Tabs defaultValue="9" value={selectedClass} onValueChange={setSelectedClass}>
-        <TabsList className="grid grid-cols-4 w-full max-w-md">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto w-full max-w-md">
           <TabsTrigger value="9">Class 9</TabsTrigger>
           <TabsTrigger value="10">Class 10</TabsTrigger>
           <TabsTrigger value="11">Class 11</TabsTrigger>

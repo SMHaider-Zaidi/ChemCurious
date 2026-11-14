@@ -2516,7 +2516,7 @@ export function PeriodicTable() {
             <CardContent className="p-0">
               <div className="pb-2">
                 {/* Main Periodic Table */}
-                <div className="w-full">
+                <div className="w-full overflow-x-auto">
                   {/* Group Labels */}
                   <div className="grid gap-0.5 mb-1" style={{ gridTemplateColumns: "repeat(18, minmax(35px, 1fr))" }}>
                     {Array.from({ length: 18 }, (_, i) => i + 1).map((group) => (
